@@ -675,16 +675,6 @@ export async function seedDatabaseIfEmpty() {
   try {
     console.log("[Firebase Seeder] Checking database status...");
     
-    // Check if settings collection is empty
-    const settingsCol = collection(db, "settings");
-    const settingsSnapshot = await getDocs(settingsCol);
-    if (!settingsSnapshot.empty) {
-      console.log("[Firebase Seeder] Database is already initialized. Skipping seed.");
-      return;
-    }
-
-    console.log("[Firebase Seeder] Database is empty. Seeding from backup or defaults...");
-
     let settings = DEFAULT_SETTINGS;
     let categories = DEFAULT_CATEGORIES;
     let products = DEFAULT_PRODUCTS;
@@ -712,35 +702,108 @@ export async function seedDatabaseIfEmpty() {
       console.log("[Firebase Seeder] Backup file not found at " + backupPath + ". Using default fallbacks.");
     }
 
-    // Seed Settings
-    console.log("[Firebase Seeder] Seeding general settings...");
-    const docRef = doc(db, "settings", "general");
-    await setDoc(docRef, settings);
+    // Seed Settings if empty
+    const settingsCol = collection(db, "settings");
+    const settingsSnapshot = await getDocs(settingsCol);
+    if (settingsSnapshot.empty) {
+      console.log("[Firebase Seeder] Seeding general settings...");
+      const docRef = doc(db, "settings", "general");
+      await setDoc(docRef, settings);
+    } else {
+      console.log("[Firebase Seeder] Settings already initialized.");
+    }
 
-    // Seed Categories
-    console.log(`[Firebase Seeder] Seeding ${categories.length} categories to Firestore...`);
+    // Sync/Seed Categories if any backup category is missing from Firestore
+    const categoriesCol = collection(db, "categories");
+    const categoriesSnapshot = await getDocs(categoriesCol);
+    const existingCatIds = new Set(categoriesSnapshot.docs.map(doc => doc.id));
+    const missingCats = categories.filter(cat => !existingCatIds.has(cat.id));
+
+    if (missingCats.length > 0 || categoriesSnapshot.empty) {
+      console.log(`[Firebase Seeder] Found ${missingCats.length} missing categories. Synchronizing all categories to Firestore...`);
+      const catBatch = writeBatch(db);
+      for (const cat of categories) {
+        const docRef = doc(db, "categories", cat.id);
+        catBatch.set(docRef, cat, { merge: true });
+      }
+      await catBatch.commit();
+      console.log("[Firebase Seeder] Categories synchronized successfully.");
+    } else {
+      console.log("[Firebase Seeder] All categories are already present in Firestore.");
+    }
+
+    // Sync/Seed Products if any backup product is missing from Firestore
+    const productsCol = collection(db, "products");
+    const productsSnapshot = await getDocs(productsCol);
+    const existingProdIds = new Set(productsSnapshot.docs.map(doc => String(doc.id)));
+    const missingProds = products.filter(prod => !existingProdIds.has(String(prod.id)));
+
+    if (missingProds.length > 0 || productsSnapshot.empty) {
+      console.log(`[Firebase Seeder] Found ${missingProds.length} missing products. Synchronizing all products to Firestore...`);
+      const prodBatch = writeBatch(db);
+      for (const prod of products) {
+        const docRef = doc(db, "products", String(prod.id));
+        prodBatch.set(docRef, prod, { merge: true });
+      }
+      await prodBatch.commit();
+      console.log("[Firebase Seeder] Products synchronized successfully.");
+    } else {
+      console.log("[Firebase Seeder] All products are already present in Firestore.");
+    }
+  } catch (e: any) {
+    if (e?.code === "permission-denied" || String(e).includes("permission")) {
+      handleFirestoreError(e, OperationType.WRITE, "seed");
+    }
+    console.error("[Firebase Seeder] Error seeding database:", e);
+  }
+}
+
+export async function forceSyncDatabase(): Promise<{ success: boolean; message: string }> {
+  if (!db) {
+    throw new Error("Firebase não configurado. Não é possível sincronizar no modo local.");
+  }
+  try {
+    let categories = DEFAULT_CATEGORIES;
+    let products = DEFAULT_PRODUCTS;
+
+    const backupPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
+    if (fs.existsSync(backupPath)) {
+      try {
+        const backupContent = JSON.parse(fs.readFileSync(backupPath, "utf-8"));
+        if (backupContent.categories && backupContent.categories.length > 0) {
+          categories = backupContent.categories;
+        }
+        if (backupContent.products && backupContent.products.length > 0) {
+          products = backupContent.products;
+        }
+      } catch (err) {
+        console.error("[Force Sync] Failed to parse backup file:", err);
+      }
+    }
+
+    console.log(`[Force Sync] Synchronizing ${categories.length} categories to Firestore...`);
     const catBatch = writeBatch(db);
     for (const cat of categories) {
       const docRef = doc(db, "categories", cat.id);
       catBatch.set(docRef, cat, { merge: true });
     }
     await catBatch.commit();
-    console.log("[Firebase Seeder] Categories synced successfully.");
-    
-    // Seed Products
-    console.log(`[Firebase Seeder] Seeding ${products.length} products to Firestore...`);
+
+    console.log(`[Force Sync] Synchronizing ${products.length} products to Firestore...`);
     const prodBatch = writeBatch(db);
     for (const prod of products) {
       const docRef = doc(db, "products", String(prod.id));
       prodBatch.set(docRef, prod, { merge: true });
     }
     await prodBatch.commit();
-    console.log("[Firebase Seeder] Products synced successfully.");
+
+    return { 
+      success: true, 
+      message: `Sincronização forçada concluída com sucesso: ${categories.length} categorias e ${products.length} produtos sincronizados.` 
+    };
   } catch (e: any) {
-    if (e?.code === "permission-denied" || String(e).includes("permission")) {
-      handleFirestoreError(e, OperationType.WRITE, "seed");
-    }
-    console.error("[Firebase Seeder] Error seeding database:", e);
+    console.error("[Force Sync] Error:", e);
+    throw e;
   }
 }
 

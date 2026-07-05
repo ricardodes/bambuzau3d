@@ -1817,6 +1817,54 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
                           <strong style={{ color: "#fff" }}>{new Date().toLocaleDateString("pt-BR")}</strong>
                         </div>
                       </div>
+
+                      <button
+                        onClick={async () => {
+                          try {
+                            showToast("Forçando sincronização com backup...");
+                            const res = await fetch("/api/backup/force-sync", {
+                              method: "POST",
+                              headers: { "x-admin-password": getAdminPassword() }
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              showToast(data.message || "Sincronização concluída com sucesso!", "success");
+                              fetchData();
+                            } else {
+                              showToast(data.error || "Falha ao sincronizar.", "error");
+                            }
+                          } catch (e) {
+                            showToast("Erro de rede ao sincronizar.", "error");
+                          }
+                        }}
+                        style={{
+                          background: "rgba(196,147,58,0.1)",
+                          border: "1px solid #C4933A",
+                          color: "#C4933A",
+                          padding: "0.5rem 1rem",
+                          borderRadius: "0.5rem",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "0.5rem",
+                          width: "100%",
+                          marginTop: "1rem",
+                          fontFamily: "var(--font-display)",
+                          fontWeight: 700,
+                          fontSize: "0.8rem",
+                          transition: "all 0.2s"
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "rgba(196,147,58,0.2)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "rgba(196,147,58,0.1)";
+                        }}
+                      >
+                        <RefreshCw size={14} />
+                        Sincronizar Banco com Backup Local
+                      </button>
                     </div>
 
                     {/* Manual Backup Card */}

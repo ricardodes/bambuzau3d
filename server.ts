@@ -15,7 +15,8 @@ import {
   deleteMessage,
   updateMessageStatus,
   DEFAULT_CATEGORIES,
-  DEFAULT_PRODUCTS
+  DEFAULT_PRODUCTS,
+  forceSyncDatabase
 } from './src/lib/firebase-server';
 import {
   triggerAutomaticDailyBackup,
@@ -498,12 +499,24 @@ async function startServer() {
   // Restore backup file from PC
   app.post('/api/backup/restore', adminAuthMiddleware, async (req, res) => {
     try {
-      const backupData = req.body;
-      const result = await restoreBackup(backupData);
+      const { backupData } = req.body;
+      const result = await restoreBackup(backupData || req.body);
       res.json(result);
     } catch (err) {
       console.error('Error restoring backup:', err);
       res.status(500).json({ success: false, error: 'Falha ao restaurar backup.' });
+    }
+  });
+
+  // Force sync categories and products with local_db_backup.json / default templates
+  app.post('/api/backup/force-sync', adminAuthMiddleware, async (_req, res) => {
+    try {
+      console.log("[Force Sync API] Forcefully synchronizing Firestore with local backup...");
+      const result = await forceSyncDatabase();
+      res.json(result);
+    } catch (err: any) {
+      console.error('[Force Sync API] Error:', err);
+      res.status(500).json({ success: false, error: err.message || 'Falha ao sincronizar.' });
     }
   });
 
