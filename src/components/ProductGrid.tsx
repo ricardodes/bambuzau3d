@@ -196,7 +196,17 @@ export function ProductGrid({ onAddToCart, onOpenCart }: ProductGridProps) {
     { id: "geek-marvel", label: "Universo Geek" },
     { id: "decorativos", label: "Decoração & Vasos" },
     { id: "personalizados", label: "Personalizados" },
-    { id: "utilidades", label: "Utilidades Gerais" }
+    { id: "utilidades", label: "Utilidades Gerais" },
+    { id: "aquario", label: "Aquário" },
+    { id: "automotivas", label: "Automotivas" },
+    { id: "brinquedos", label: "Brinquedos" },
+    { id: "datas-festivas", label: "Datas Festivas" },
+    { id: "eventos", label: "Eventos" },
+    { id: "lustres", label: "Lustres" },
+    { id: "pets", label: "Pets" },
+    { id: "profissionais", label: "Profissionais" },
+    { id: "saude-dia-a-dia", label: "Saúde e Dia a Dia" },
+    { id: "suportes", label: "Suportes" }
   ]);
   const [active, setActive] = useState("all");
   const [liked, setLiked] = useState<number[]>([]);

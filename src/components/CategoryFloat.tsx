@@ -14,34 +14,114 @@ const FALLBACK_CATEGORIES: Category[] = [
   {
     id: "geek-marvel",
     label: "Universo Geek",
-    desc: "Colecionáveis, bustos, chaveiros e suportes temáticos",
+    desc: "Bustos, action figures e colecionáveis do seu universo favorito",
     image: "figurine-3d.jpg",
     href: "#geek-marvel",
-    imageScale: "center 10%",
+    imageScale: "center center",
   },
   {
     id: "decorativos",
     label: "Decoração & Vasos",
-    desc: "Lustres geométricos e vasos decorativos de alto brilho",
-    image: "vase-3d.jpg",
+    desc: "Lustres geométricos e vasos decorativos com brilho acetinado",
+    image: "art-sculpture.jpg",
     href: "#decorativos",
     imageScale: "center 30%",
   },
   {
     id: "personalizados",
     label: "Personalizados",
-    desc: "Sua ideia impressa em 3D sob encomenda",
+    desc: "Lembrancinhas, troféus e projetos sob medida para você ou sua empresa",
     image: "event-3d.jpg",
     href: "#personalizados",
-    imageScale: "center center",
+    imageScale: "center 10%",
   },
   {
     id: "utilidades",
     label: "Utilidades Gerais",
-    desc: "Acessórios e soluções ergonômicas inteligentes",
+    desc: "Soluções inteligentes, comedouros pet e itens práticos para o dia a dia",
     image: "utility-3d.jpg",
     href: "#utilidades",
     imageScale: "center center",
+  },
+  {
+    id: "aquario",
+    label: "Aquário",
+    desc: "Decorações exclusivas para aquarismo",
+    image: "aquario.jpg",
+    href: "#aquario",
+    imageScale: "center top"
+  },
+  {
+    id: "automotivas",
+    label: "Automotivas",
+    desc: "Suportes veiculares, organizadores e peças customizadas",
+    image: "automotivas.jpg",
+    href: "#automotivas",
+    imageScale: "center center"
+  },
+  {
+    id: "brinquedos",
+    label: "Brinquedos",
+    desc: "Articulados e colecionáveis",
+    image: "dragon-3d.jpg",
+    href: "#brinquedos",
+    imageScale: "center 20%"
+  },
+  {
+    id: "datas-festivas",
+    label: "Datas Festivas",
+    desc: "Decorações temáticas para Natal, Páscoa e datas festivas",
+    image: "festive-3d.jpg",
+    href: "#datas-festivas",
+    imageScale: "center center"
+  },
+  {
+    id: "eventos",
+    label: "Eventos",
+    desc: "Troféus, lembrancinhas e itens sob medida para eventos",
+    image: "event-3d.jpg",
+    href: "#eventos",
+    imageScale: "center center"
+  },
+  {
+    id: "lustres",
+    label: "Lustres",
+    desc: "Iluminação artesanal única",
+    image: "lustres.jpg",
+    href: "#lustres",
+    imageScale: "center center"
+  },
+  {
+    id: "pets",
+    label: "Pets",
+    desc: "Acessórios e comedouros personalizados para o seu pet",
+    image: "pet-3d.jpg",
+    href: "#pets",
+    imageScale: "center center"
+  },
+  {
+    id: "profissionais",
+    label: "Profissionais",
+    desc: "Gabaritos, suportes técnicos e organizadores de ferramentas",
+    image: "profissionais.jpg",
+    href: "#profissionais",
+    imageScale: "center center"
+  },
+  {
+    id: "saude-dia-a-dia",
+    label: "Saúde e Dia a Dia",
+    desc: "Adaptadores ergonômicos e acessórios práticos de saúde",
+    image: "saude.jpg",
+    href: "#saude-dia-a-dia",
+    imageScale: "center center"
+  },
+  {
+    id: "suportes",
+    label: "Suportes",
+    desc: "Suportes para fones, controles, celulares e paredes",
+    image: "support-3d.jpg",
+    href: "#suportes",
+    imageScale: "center center"
   }
 ];
 

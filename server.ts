@@ -15,8 +15,7 @@ import {
   deleteMessage,
   updateMessageStatus,
   DEFAULT_CATEGORIES,
-  DEFAULT_PRODUCTS,
-  forceSyncDatabase
+  DEFAULT_PRODUCTS
 } from './src/lib/firebase-server';
 import {
   triggerAutomaticDailyBackup,
@@ -163,8 +162,13 @@ async function startServer() {
   // API Route to fetch categories dynamically from Firestore
   app.get('/api/categories', async (_req, res) => {
     try {
-      const categories = await getCategories();
-      const availableCategories = categories && categories.length > 0 ? categories : DEFAULT_CATEGORIES;
+      const dbCategories = await getCategories();
+      const map = new Map<string, any>();
+      DEFAULT_CATEGORIES.forEach(cat => map.set(cat.id, cat));
+      if (dbCategories && dbCategories.length > 0) {
+        dbCategories.forEach(cat => map.set(cat.id, { ...map.get(cat.id), ...cat }));
+      }
+      const availableCategories = Array.from(map.values());
       // Dynamically filter out 'articulados' and 'organizacao' categories
       const filteredCategories = availableCategories.filter(
         (cat) => cat.id !== "articulados" && cat.id !== "organizacao"
@@ -182,8 +186,13 @@ async function startServer() {
   // API Route to fetch products dynamically from Firestore
   app.get('/api/products', async (_req, res) => {
     try {
-      const products = await getProducts();
-      const availableProducts = products && products.length > 0 ? products : DEFAULT_PRODUCTS;
+      const dbProducts = await getProducts();
+      const map = new Map<string, any>();
+      DEFAULT_PRODUCTS.forEach(p => map.set(String(p.id), p));
+      if (dbProducts && dbProducts.length > 0) {
+        dbProducts.forEach(p => map.set(String(p.id), { ...map.get(String(p.id)), ...p }));
+      }
+      const availableProducts = Array.from(map.values());
       
       // Dynamically reassign category IDs to keep catalog intact and free of removed categories
       const mappedProducts = availableProducts.map((p) => {
@@ -505,18 +514,6 @@ async function startServer() {
     } catch (err) {
       console.error('Error restoring backup:', err);
       res.status(500).json({ success: false, error: 'Falha ao restaurar backup.' });
-    }
-  });
-
-  // Force sync categories and products with local_db_backup.json / default templates
-  app.post('/api/backup/force-sync', adminAuthMiddleware, async (_req, res) => {
-    try {
-      console.log("[Force Sync API] Forcefully synchronizing Firestore with local backup...");
-      const result = await forceSyncDatabase();
-      res.json(result);
-    } catch (err: any) {
-      console.error('[Force Sync API] Error:', err);
-      res.status(500).json({ success: false, error: err.message || 'Falha ao sincronizar.' });
     }
   });
 
