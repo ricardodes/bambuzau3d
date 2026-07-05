@@ -30,7 +30,7 @@ export const SAFE_CATEGORY_IMAGES: Record<string, string> = {
   "lustres": "lustres.jpg",
   "aquario": "aquario.jpg",
   "brinquedos": "dragon-3d.jpg",
-  "personalizados": "figurine-3d.jpg",
+  "personalizados": "event-3d.jpg",
   "pets": "pet-3d.jpg",
   "suportes": "support-3d.jpg",
   "organizacao": "organizer-3d.jpg",

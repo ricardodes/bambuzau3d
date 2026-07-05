@@ -137,17 +137,21 @@ async function startServer() {
       .replace(/\//g, '&#x2F;');
   };
 
-  // Seed the Firestore database and run daily backups on startup
+  // Seed the Firestore database on startup (runs on Vercel too!)
+  try {
+    await seedDatabaseIfEmpty();
+  } catch (err) {
+    console.error('Falha ao rodar o seeder do Firebase:', err);
+  }
+
+  // Seed local daily backups on startup (runs on local dev server only)
   const isVercel = !!process.env.VERCEL;
   if (!isVercel) {
     try {
-      await seedDatabaseIfEmpty();
       await triggerAutomaticDailyBackup();
     } catch (err) {
-      console.error('Falha ao rodar o seeder do Firebase e backups:', err);
+      console.error('Falha ao rodar backups locais:', err);
     }
-  } else {
-    console.log('[Server Startup] Rodando em modo Serverless (Vercel). Pulando seeder de banco e backups locais.');
   }
 
   // API Health check route

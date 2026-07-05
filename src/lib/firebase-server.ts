@@ -60,12 +60,44 @@ export interface Product {
 // Default seed categories (including the 5 original ones and 6 requested ones)
 export const DEFAULT_CATEGORIES: Category[] = [
   {
-    id: "geek-marvel",
-    label: "Universo Geek",
-    desc: "Bustos, action figures e colecionáveis do seu universo favorito",
-    image: "figurine-3d.jpg",
-    href: "#geek-marvel",
-    imageScale: "center center",
+    id: "aquario",
+    label: "Aquário",
+    desc: "Decorações exclusivas para aquarismo",
+    image: "aquario.jpg",
+    href: "#aquario",
+    imageScale: "center top"
+  },
+  {
+    id: "articulados",
+    label: "Brinquedos Articulados",
+    desc: "Dragões e criaturas totalmente flexíveis impressas em uma só peça",
+    image: "dragon-3d.jpg",
+    href: "#articulados",
+    imageScale: "center 20%"
+  },
+  {
+    id: "automotivas",
+    label: "Automotivas",
+    desc: "Suportes veiculares, organizadores e peças customizadas",
+    image: "automotivas.jpg",
+    href: "#automotivas",
+    imageScale: "center center"
+  },
+  {
+    id: "brinquedos",
+    label: "Brinquedos",
+    desc: "Articulados e colecionáveis",
+    image: "dragon-3d.jpg",
+    href: "#brinquedos",
+    imageScale: "center 20%"
+  },
+  {
+    id: "datas-festivas",
+    label: "Datas Festivas",
+    desc: "Decorações temáticas para Natal, Páscoa e datas festivas",
+    image: "festive-3d.jpg",
+    href: "#datas-festivas",
+    imageScale: "center center"
   },
   {
     id: "decorativos",
@@ -73,7 +105,39 @@ export const DEFAULT_CATEGORIES: Category[] = [
     desc: "Lustres geométricos e vasos decorativos com brilho acetinado",
     image: "art-sculpture.jpg",
     href: "#decorativos",
-    imageScale: "center 30%",
+    imageScale: "center 30%"
+  },
+  {
+    id: "eventos",
+    label: "Eventos",
+    desc: "Troféus, lembrancinhas e itens sob medida para eventos",
+    image: "event-3d.jpg",
+    href: "#eventos",
+    imageScale: "center center"
+  },
+  {
+    id: "geek-marvel",
+    label: "Universo Geek",
+    desc: "Bustos, action figures e colecionáveis do seu universo favorito",
+    image: "figurine-3d.jpg",
+    href: "#geek-marvel",
+    imageScale: "center center"
+  },
+  {
+    id: "lustres",
+    label: "Lustres",
+    desc: "Iluminação artesanal única",
+    image: "lustres.jpg",
+    href: "#lustres",
+    imageScale: "center center"
+  },
+  {
+    id: "organizacao",
+    label: "Organização & Suportes",
+    desc: "Suportes de headset, celular e organizadores modulares para seu setup",
+    image: "support-3d.jpg",
+    href: "#organizacao",
+    imageScale: "center center"
   },
   {
     id: "personalizados",
@@ -81,7 +145,39 @@ export const DEFAULT_CATEGORIES: Category[] = [
     desc: "Lembrancinhas, troféus e projetos sob medida para você ou sua empresa",
     image: "event-3d.jpg",
     href: "#personalizados",
-    imageScale: "center 10%",
+    imageScale: "center 10%"
+  },
+  {
+    id: "pets",
+    label: "Pets",
+    desc: "Acessórios e comedouros personalizados para o seu pet",
+    image: "pet-3d.jpg",
+    href: "#pets",
+    imageScale: "center center"
+  },
+  {
+    id: "profissionais",
+    label: "Profissionais",
+    desc: "Gabaritos, suportes técnicos e organizadores de ferramentas",
+    image: "profissionais.jpg",
+    href: "#profissionais",
+    imageScale: "center center"
+  },
+  {
+    id: "saude-dia-a-dia",
+    label: "Saúde e Dia a Dia",
+    desc: "Adaptadores ergonômicos e acessórios práticos de saúde",
+    image: "saude.jpg",
+    href: "#saude-dia-a-dia",
+    imageScale: "center center"
+  },
+  {
+    id: "suportes",
+    label: "Suportes",
+    desc: "Suportes para fones, controles, celulares e paredes",
+    image: "support-3d.jpg",
+    href: "#suportes",
+    imageScale: "center center"
   },
   {
     id: "utilidades",
@@ -89,7 +185,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
     desc: "Soluções inteligentes, comedouros pet e itens práticos para o dia a dia",
     image: "utility-3d.jpg",
     href: "#utilidades",
-    imageScale: "center center",
+    imageScale: "center center"
   }
 ];export const DEFAULT_PRODUCTS: Product[] = [
   {
@@ -579,27 +675,62 @@ export async function seedDatabaseIfEmpty() {
   try {
     console.log("[Firebase Seeder] Checking database status...");
     
-    // Seed settings
+    // Check if settings collection is empty
     const settingsCol = collection(db, "settings");
     const settingsSnapshot = await getDocs(settingsCol);
-    if (settingsSnapshot.empty) {
-      console.log("[Firebase Seeder] Settings collection is empty. Seeding DEFAULT_SETTINGS...");
-      const docRef = doc(db, "settings", "general");
-      await setDoc(docRef, DEFAULT_SETTINGS);
+    if (!settingsSnapshot.empty) {
+      console.log("[Firebase Seeder] Database is already initialized. Skipping seed.");
+      return;
     }
 
-    console.log("[Firebase Seeder] Synchronizing DEFAULT_CATEGORIES to Firestore...");
+    console.log("[Firebase Seeder] Database is empty. Seeding from backup or defaults...");
+
+    let settings = DEFAULT_SETTINGS;
+    let categories = DEFAULT_CATEGORIES;
+    let products = DEFAULT_PRODUCTS;
+
+    // Load from backup JSON if exists in the bundle
+    const backupPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
+    if (fs.existsSync(backupPath)) {
+      try {
+        console.log("[Firebase Seeder] Reading backup from:", backupPath);
+        const backupContent = JSON.parse(fs.readFileSync(backupPath, "utf-8"));
+        if (backupContent.settings && Object.keys(backupContent.settings).length > 0) {
+          settings = backupContent.settings;
+        }
+        if (backupContent.categories && backupContent.categories.length > 0) {
+          categories = backupContent.categories;
+        }
+        if (backupContent.products && backupContent.products.length > 0) {
+          products = backupContent.products;
+        }
+        console.log(`[Firebase Seeder] Successfully parsed backup file: ${categories.length} categories, ${products.length} products loaded.`);
+      } catch (err) {
+        console.error("[Firebase Seeder] Failed to parse backup file, using defaults:", err);
+      }
+    } else {
+      console.log("[Firebase Seeder] Backup file not found at " + backupPath + ". Using default fallbacks.");
+    }
+
+    // Seed Settings
+    console.log("[Firebase Seeder] Seeding general settings...");
+    const docRef = doc(db, "settings", "general");
+    await setDoc(docRef, settings);
+
+    // Seed Categories
+    console.log(`[Firebase Seeder] Seeding ${categories.length} categories to Firestore...`);
     const catBatch = writeBatch(db);
-    for (const cat of DEFAULT_CATEGORIES) {
+    for (const cat of categories) {
       const docRef = doc(db, "categories", cat.id);
       catBatch.set(docRef, cat, { merge: true });
     }
     await catBatch.commit();
     console.log("[Firebase Seeder] Categories synced successfully.");
     
-    console.log("[Firebase Seeder] Synchronizing DEFAULT_PRODUCTS to Firestore...");
+    // Seed Products
+    console.log(`[Firebase Seeder] Seeding ${products.length} products to Firestore...`);
     const prodBatch = writeBatch(db);
-    for (const prod of DEFAULT_PRODUCTS) {
+    for (const prod of products) {
       const docRef = doc(db, "products", String(prod.id));
       prodBatch.set(docRef, prod, { merge: true });
     }
