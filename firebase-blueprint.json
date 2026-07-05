@@ -1,0 +1,96 @@
+{
+  "entities": {
+    "Category": {
+      "title": "Category",
+      "description": "Uma categoria de produto no InovaStudio",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "desc": { "type": "string" },
+        "image": { "type": "string" },
+        "href": { "type": "string" },
+        "imageScale": { "type": "string" }
+      },
+      "required": ["id", "label", "desc", "image", "href"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Um produto impresso em 3D no InovaStudio",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "price": { "type": "string" },
+        "oldPrice": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviews": { "type": "integer" },
+        "image": { "type": "string" },
+        "badge": { "type": "string" },
+        "shopeeUrl": { "type": "string" },
+        "desc": { "type": "string" }
+      },
+      "required": ["id", "name", "category", "categoryId", "price", "rating", "reviews", "image", "shopeeUrl", "desc"]
+    },
+    "AppSettings": {
+      "title": "AppSettings",
+      "description": "Configurações gerais da loja InovaStudio",
+      "type": "object",
+      "properties": {
+        "storeName": { "type": "string" },
+        "storeDescription": { "type": "string" },
+        "shopeeStoreUrl": { "type": "string" },
+        "whatsAppPhone": { "type": "string" },
+        "whatsAppMessage": { "type": "string" },
+        "whatsAppEnabled": { "type": "boolean" },
+        "socialInstagram": { "type": "string" },
+        "socialFacebook": { "type": "string" },
+        "socialYoutube": { "type": "string" },
+        "socialTelegram": { "type": "string" },
+        "wholesaleWhatsApp": { "type": "string" },
+        "wholesaleTelegram": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "adminPassword": { "type": "string" },
+        "isAdminOnline": { "type": "boolean" },
+        "contactEmail": { "type": "string" }
+      },
+      "required": ["storeName", "storeDescription", "shopeeStoreUrl", "whatsAppPhone", "whatsAppMessage", "whatsAppEnabled"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Mensagem enviada pelo formulário Fale Conosco",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "messageText": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "read": { "type": "boolean" },
+        "replied": { "type": "boolean" }
+      },
+      "required": ["name", "email", "phone", "messageText", "createdAt", "read", "replied"]
+    }
+  },
+  "firestore": {
+    "categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Coleção de categorias de produtos"
+    },
+    "products/{productId}": {
+      "schema": "Product",
+      "description": "Coleção de produtos à venda"
+    },
+    "settings/{settingId}": {
+      "schema": "AppSettings",
+      "description": "Configurações da loja"
+    },
+    "messages/{messageId}": {
+      "schema": "Message",
+      "description": "Mensagens de contato dos clientes"
+    }
+  }
+}

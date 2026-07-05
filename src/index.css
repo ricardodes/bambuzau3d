@@ -1,0 +1,236 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  /* ── Backgrounds (aligned with logo's premium soft light green) */
+  --color-bg:          #E6EFE4; /* Eye-friendly soft light green background */
+  --color-surface:     #F3F8F2; /* Elegant very soft green-white cards and surfaces */
+  --color-card:        #FFFFFF;
+  --color-border:      #D4DDD2; /* Soft light green-sand dividers */
+  --color-muted:       #BAC4B9;
+
+  /* ── Text (Elegant deep forest green-grey for superb readability and high contrast) */
+  --color-fg:          #16291C;
+  --color-fg-muted:    #526257;
+
+  /* ── Accent — Forest Green from the Bambuzau Logo */
+  --color-accent:      #1E4D2B;
+  --color-accent-light:#4ADE80; /* Highly visible mint light green for dark elements/hero overlays */
+  --color-accent-hover:#2A663A;
+  --color-accent-soft: rgba(30,77,43,0.08);
+  --color-accent-glow: rgba(30,77,43,0.18);
+
+  /* ── Bamboo Yellow/Orange from the Logo */
+  --color-bamboo:      #F2A202;
+  --color-bamboo-soft: rgba(242,162,2,0.12);
+  --color-bamboo-glow: rgba(242,162,2,0.25);
+
+  /* ── Shopee orange (retained for purchase indicators) */
+  --color-shopee:      #EE4D2D;
+  --color-shopee-soft: rgba(238,77,45,0.10);
+  --color-shopee-glow: rgba(238,77,45,0.22);
+
+  --color-green:       #25D366;
+
+  --font-display: "Plus Jakarta Sans", sans-serif;
+  --font-body:    "Inter", sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+/* Offset anchor targets so fixed nav (72px) doesn't cover section headings */
+#categorias,
+#decorativos,
+#lustres,
+#aquario,
+#brinquedos,
+#personalizados,
+#depoimentos {
+  scroll-margin-top: 80px;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+/* ── Divider line ───────────────────────────────────────── */
+.section-label {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-accent);   /* gold */
+}
+
+/* ── Bamboo/Forest accent text ───────────────────────────── */
+.text-gold { color: var(--color-bamboo); }
+.text-silver { color: var(--color-accent); }
+.text-bamboo { color: var(--color-bamboo); }
+.text-forest { color: var(--color-accent); }
+
+/* ── Buttons ────────────────────────────────────────────── */
+.btn-shopee {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-shopee);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.875rem 1.75rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  transition: opacity 0.2s, transform 0.2s;
+  box-shadow: 0 6px 28px var(--color-shopee-glow);
+}
+.btn-shopee:hover { opacity: 0.88; transform: translateY(-2px); }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--color-fg);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.875rem 1.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(30,77,43,0.35);
+  text-decoration: none;
+  transition: border-color 0.2s, transform 0.2s, background 0.2s;
+}
+.btn-ghost:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  transform: translateY(-2px);
+}
+
+.btn-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-green);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.875rem 1.75rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  transition: opacity 0.2s, transform 0.2s;
+  box-shadow: 0 6px 24px rgba(37,211,102,0.28);
+}
+.btn-whatsapp:hover { opacity: 0.88; transform: translateY(-2px); }
+
+/* ── Cards ──────────────────────────────────────────────── */
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 0.875rem;
+  transition: transform 0.3s cubic-bezier(0.22,1,0.36,1),
+              border-color 0.3s ease,
+              box-shadow 0.3s ease;
+  box-shadow: 0 4px 20px rgba(30,77,43,0.04);
+}
+.card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(30,77,43,0.3);
+  box-shadow: 0 20px 40px rgba(30,77,43,0.08), 0 0 0 1px rgba(30,77,43,0.04);
+}
+
+/* ── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-muted); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
+
+/* ── Scroll fade-up ─────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fade-up 0.65s cubic-bezier(0.22,1,0.36,1) both; }
+.fade-up-d1 { animation-delay: 0.1s; }
+.fade-up-d2 { animation-delay: 0.2s; }
+.fade-up-d3 { animation-delay: 0.3s; }
+
+/* ── Scroll indicator bounce ────────────────────────────── */
+@keyframes bounce-soft {
+  0%, 100% { transform: translateY(0) translateX(-50%); }
+  50%       { transform: translateY(8px) translateX(-50%); }
+}
+.bounce-soft { animation: bounce-soft 2s ease-in-out infinite; }
+
+/* ── Hotspot ping animation ─────────────────────────────── */
+@keyframes hotspot-ping {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  60%  { transform: scale(1.8); opacity: 0; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* ── CategoryFloat responsive ───────────────────────────── */
+.category-float-grid {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 0.875rem !important;
+  width: 100% !important;
+}
+@media (max-width: 1100px) {
+  .category-float-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+@media (max-width: 600px) {
+  .category-float-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── Hover Flash / Shiny sweep effect ───────────────────── */
+.flash-container {
+  position: relative;
+  overflow: hidden;
+}
+.flash-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 65%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-25deg);
+  pointer-events: none;
+  transition: none;
+  z-index: 5;
+}
+.flash-container:hover::after {
+  left: 150%;
+  transition: left 0.75s ease-in-out;
+}
+
+/* ── Cat float item stagger ─────────────────────────────── */
+.cat-float-item {
+  animation: fade-up 0.7s cubic-bezier(0.22,1,0.36,1) both;
+}

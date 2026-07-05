@@ -1,0 +1,8 @@
+{
+  "name": "Bambuzau 3D",
+  "description": "Impressões 3D colecionáveis e personalizadas. O melhor do universo Geek, Marvel, decorações e utilidades premium com acabamento excepcional.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

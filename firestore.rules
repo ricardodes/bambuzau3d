@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (First block is default deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Helper to get incoming data
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // Helper to get existing data
+    function existing() {
+      return resource.data;
+    }
+
+    // Validate Category
+    function isValidCategory(data) {
+      return data.id is string && data.id.size() <= 100
+          && data.label is string && data.label.size() <= 100
+          && data.desc is string && data.desc.size() <= 500
+          && data.image is string && data.image.size() <= 200
+          && data.href is string && data.href.size() <= 100
+          && (!('imageScale' in data) || (data.imageScale is string && data.imageScale.size() <= 100));
+    }
+
+    // Validate Product
+    function isValidProduct(data) {
+      return data.id is int
+          && data.name is string && data.name.size() <= 150
+          && data.category is string && data.category.size() <= 100
+          && data.categoryId is string && data.categoryId.size() <= 100
+          && data.price is string && data.price.size() <= 50
+          && (!('oldPrice' in data) || (data.oldPrice is string && data.oldPrice.size() <= 50))
+          && data.rating is number
+          && data.reviews is int
+          && data.image is string && data.image.size() <= 250
+          && (!('badge' in data) || (data.badge is string && data.badge.size() <= 50))
+          && data.shopeeUrl is string && data.shopeeUrl.size() <= 500
+          && data.desc is string && data.desc.size() <= 1000;
+    }
+
+    // Validate AppSettings
+    function isValidSettings(data) {
+      return data.storeName is string && data.storeName.size() <= 100
+          && data.storeDescription is string && data.storeDescription.size() <= 1000
+          && data.shopeeStoreUrl is string && data.shopeeStoreUrl.size() <= 500
+          && data.whatsAppPhone is string && data.whatsAppPhone.size() <= 30
+          && data.whatsAppMessage is string && data.whatsAppMessage.size() <= 500
+          && data.whatsAppEnabled is bool
+          && (!('socialInstagram' in data) || (data.socialInstagram is string && data.socialInstagram.size() <= 100))
+          && (!('socialFacebook' in data) || (data.socialFacebook is string && data.socialFacebook.size() <= 100))
+          && (!('socialYoutube' in data) || (data.socialYoutube is string && data.socialYoutube.size() <= 100))
+          && (!('socialTelegram' in data) || (data.socialTelegram is string && data.socialTelegram.size() <= 100))
+          && (!('wholesaleWhatsApp' in data) || (data.wholesaleWhatsApp is string && data.wholesaleWhatsApp.size() <= 30))
+          && (!('wholesaleTelegram' in data) || (data.wholesaleTelegram is string && data.wholesaleTelegram.size() <= 200))
+          && (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 8388608))
+          && (!('adminPassword' in data) || (data.adminPassword is string && data.adminPassword.size() <= 100))
+          && (!('isAdminOnline' in data) || (data.isAdminOnline is bool))
+          && (!('contactEmail' in data) || (data.contactEmail is string && data.contactEmail.size() <= 150));
+    }
+
+    // Validate Message
+    function isValidMessage(data) {
+      return data.name is string && data.name.size() <= 100
+          && data.email is string && data.email.size() <= 150
+          && data.phone is string && data.phone.size() <= 30
+          && data.messageText is string && data.messageText.size() <= 2000
+          && data.createdAt is string && data.createdAt.size() <= 100
+          && data.read is bool
+          && data.replied is bool;
+    }
+
+    // Match rules for Categories
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update: if isValidId(categoryId) && isValidCategory(incoming());
+      allow delete: if isValidId(categoryId);
+    }
+
+    // Match rules for Products
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update: if isValidId(productId) && isValidProduct(incoming());
+      allow delete: if isValidId(productId);
+    }
+
+    // Match rules for Settings
+    match /settings/{settingId} {
+      allow read: if true;
+      allow create, update: if isValidId(settingId) && isValidSettings(incoming());
+      allow delete: if isValidId(settingId);
+    }
+
+    // Match rules for Messages
+    match /messages/{messageId} {
+      allow read: if true;
+      allow create: if isValidId(messageId) && isValidMessage(incoming());
+      allow update: if isValidId(messageId) && isValidMessage(incoming());
+      allow delete: if isValidId(messageId);
+    }
+  }
+}
