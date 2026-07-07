@@ -71,7 +71,16 @@ function startServer() {
   const createRateLimiter = (maxRequests: number, windowMs: number, message: string) => {
     return (req: express.Request, res: express.Response, next: express.NextFunction) => {
       // Resolve client IP cleanly, respecting reverse-proxies
-      const ip = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+      const forwardedFor = req.headers['x-forwarded-for'];
+      let rawIp = 'unknown';
+      if (typeof forwardedFor === 'string') {
+        rawIp = forwardedFor;
+      } else if (Array.isArray(forwardedFor) && forwardedFor.length > 0) {
+        rawIp = forwardedFor[0] || 'unknown';
+      } else if (req.socket.remoteAddress) {
+        rawIp = req.socket.remoteAddress;
+      }
+      const ip = rawIp.split(',')[0].trim();
       const now = Date.now();
 
       if (!rateLimitStore[ip]) {

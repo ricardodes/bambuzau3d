@@ -288,9 +288,9 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
       } else {
         setAuthError("Senha de acesso incorreta.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login verification error:", err);
-      setAuthError("Erro de comunicação com o servidor.");
+      setAuthError(`Erro de comunicação com o servidor: ${err?.message || "Erro desconhecido"}`);
     } finally {
       setLoading(false);
     }
