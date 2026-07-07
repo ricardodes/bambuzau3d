@@ -608,12 +608,23 @@ export async function getSettings(): Promise<AppSettings> {
   }
   try {
     const snapshot = await getDocs(collection(db, "settings"));
-    const generalDoc = snapshot.docs.find(d => d.id === "general");
+    const generalDoc = snapshot.docs.find(d => d.id === "general") || snapshot.docs.find(d => d.id === "general_inova");
     if (!generalDoc) {
       return DEFAULT_SETTINGS;
     }
     const data = generalDoc.data();
     const merged = { ...DEFAULT_SETTINGS, ...data } as AppSettings;
+
+    // If the database document is named general_inova but contains the updated settings (or default ones),
+    // we should save it under "general" to ensure consistent naming and correct access in other queries.
+    if (generalDoc.id === "general_inova" && !(merged.storeName === "InovaStudio" || merged.storeName?.toLowerCase().includes("inovastudio"))) {
+      try {
+        await setDoc(doc(db, "settings", "general"), merged);
+        console.log("Copied general_inova settings to 'general' document successfully.");
+      } catch (err) {
+        console.error("Failed to copy general_inova to general:", err);
+      }
+    }
     
     // Auto-migrate settings if they are still set to InovaStudio
     if (merged.storeName === "InovaStudio" || merged.storeName?.toLowerCase().includes("inovastudio")) {
