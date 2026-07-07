@@ -402,9 +402,8 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 export async function getCategories(): Promise<Category[]> {
-  if (!db) {
-    console.warn("Firebase not configured. Returning DEFAULT_CATEGORIES fallback.");
-    return DEFAULT_CATEGORIES;
+  if (isLocalDatabaseOnly() || !db) {
+    return readLocalDatabase().categories;
   }
   try {
     const colRef = collection(db, "categories");
@@ -418,14 +417,13 @@ export async function getCategories(): Promise<Category[]> {
       handleFirestoreError(e, OperationType.GET, "categories");
     }
     console.error("Error fetching categories from Firestore:", e);
-    return [];
+    return readLocalDatabase().categories;
   }
 }
 
 export async function getProducts(): Promise<Product[]> {
-  if (!db) {
-    console.warn("Firebase not configured. Returning DEFAULT_PRODUCTS fallback.");
-    return DEFAULT_PRODUCTS;
+  if (isLocalDatabaseOnly() || !db) {
+    return readLocalDatabase().products.sort((a, b) => Number(a.id) - Number(b.id));
   }
   try {
     const colRef = collection(db, "products");
@@ -441,14 +439,18 @@ export async function getProducts(): Promise<Product[]> {
       handleFirestoreError(e, OperationType.GET, "products");
     }
     console.error("Error fetching products from Firestore:", e);
-    return [];
+    return readLocalDatabase().products.sort((a, b) => Number(a.id) - Number(b.id));
   }
 }
 
 // Product Write operations
 export async function addProduct(prod: Product): Promise<void> {
-  if (!db) {
-    throw new Error("Firebase não configurado. Não é possível adicionar produtos no modo de fallback local.");
+  if (isLocalDatabaseOnly() || !db) {
+    const current = readLocalDatabase();
+    const updated = current.products.filter(p => p.id !== prod.id);
+    updated.push(prod);
+    writeLocalDatabase({ products: updated });
+    return;
   }
   try {
     const docRef = doc(db, "products", String(prod.id));
@@ -463,8 +465,11 @@ export async function addProduct(prod: Product): Promise<void> {
 }
 
 export async function deleteProduct(id: number): Promise<void> {
-  if (!db) {
-    throw new Error("Firebase não configurado. Não é possível remover produtos no modo de fallback local.");
+  if (isLocalDatabaseOnly() || !db) {
+    const current = readLocalDatabase();
+    const updated = current.products.filter(p => p.id !== id);
+    writeLocalDatabase({ products: updated });
+    return;
   }
   try {
     const { deleteDoc } = await import("firebase/firestore");
@@ -497,6 +502,7 @@ export interface AppSettings {
   adminPassword?: string;
   isAdminOnline?: boolean;
   contactEmail?: string;
+  useLocalDatabaseOnly?: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -515,8 +521,95 @@ const DEFAULT_SETTINGS: AppSettings = {
   logoUrl: "",
   adminPassword: "admin123",
   isAdminOnline: true,
-  contactEmail: "bambuzau3d@gmail.com"
+  contactEmail: "bambuzau3d@gmail.com",
+  useLocalDatabaseOnly: false
 };
+
+// Helper to determine if we are strictly using the local JSON database
+export function isLocalDatabaseOnly(): boolean {
+  if (process.env.USE_LOCAL_DB === "true") {
+    return true;
+  }
+  const backupPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
+  if (fs.existsSync(backupPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(backupPath, "utf-8"));
+      if (data?.settings?.useLocalDatabaseOnly === true) {
+        return true;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+  return false;
+}
+
+// Helper to read all local DB data
+export function readLocalDatabase(): {
+  settings: AppSettings;
+  categories: Category[];
+  products: Product[];
+  messages: any[];
+} {
+  const backupPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
+  const defaultData = {
+    settings: DEFAULT_SETTINGS,
+    categories: DEFAULT_CATEGORIES,
+    products: DEFAULT_PRODUCTS,
+    messages: []
+  };
+
+  if (!fs.existsSync(backupPath)) {
+    const dir = path.dirname(backupPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(backupPath, JSON.stringify(defaultData, null, 2), "utf-8");
+    return defaultData;
+  }
+
+  try {
+    const data = JSON.parse(fs.readFileSync(backupPath, "utf-8"));
+    return {
+      settings: { ...DEFAULT_SETTINGS, ...(data.settings || {}) },
+      categories: data.categories || DEFAULT_CATEGORIES,
+      products: data.products || DEFAULT_PRODUCTS,
+      messages: data.messages || []
+    };
+  } catch (e) {
+    console.error("Error reading local database file, using defaults:", e);
+    return defaultData;
+  }
+}
+
+// Helper to write local DB data
+export function writeLocalDatabase(data: {
+  settings?: AppSettings;
+  categories?: Category[];
+  products?: Product[];
+  messages?: any[];
+}) {
+  const backupPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
+  const current = readLocalDatabase();
+  
+  const merged = {
+    settings: data.settings !== undefined ? data.settings : current.settings,
+    categories: data.categories !== undefined ? data.categories : current.categories,
+    products: data.products !== undefined ? data.products : current.products,
+    messages: data.messages !== undefined ? data.messages : current.messages,
+    lastUpdated: new Date().toISOString()
+  };
+
+  try {
+    const dir = path.dirname(backupPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(backupPath, JSON.stringify(merged, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Error writing local database file:", e);
+  }
+}
 
 export interface Message {
   id?: string;
@@ -530,9 +623,9 @@ export interface Message {
 }
 
 export async function getMessages(): Promise<Message[]> {
-  if (!db) {
-    console.warn("Firebase not configured. Returning empty messages list.");
-    return [];
+  if (isLocalDatabaseOnly() || !db) {
+    const msgs = readLocalDatabase().messages;
+    return msgs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
   try {
     const colRef = collection(db, "messages");
@@ -547,13 +640,23 @@ export async function getMessages(): Promise<Message[]> {
       handleFirestoreError(e, OperationType.GET, "messages");
     }
     console.error("Error fetching messages from Firestore:", e);
-    return [];
+    const msgs = readLocalDatabase().messages;
+    return msgs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 }
 
 export async function addMessage(msg: Omit<Message, "id" | "createdAt" | "read" | "replied">): Promise<void> {
-  if (!db) {
-    console.warn("Firebase not configured. Simulated sending message:", msg);
+  if (isLocalDatabaseOnly() || !db) {
+    const current = readLocalDatabase();
+    const newMsg: Message = {
+      ...msg,
+      id: "local_" + Math.random().toString(36).substr(2, 9),
+      createdAt: new Date().toISOString(),
+      read: false,
+      replied: false
+    };
+    current.messages.push(newMsg);
+    writeLocalDatabase({ messages: current.messages });
     return;
   }
   try {
@@ -570,8 +673,11 @@ export async function addMessage(msg: Omit<Message, "id" | "createdAt" | "read" 
 }
 
 export async function deleteMessage(id: string): Promise<void> {
-  if (!db) {
-    throw new Error("Firebase não configurado. Não é possível excluir mensagens no modo de fallback local.");
+  if (isLocalDatabaseOnly() || !db) {
+    const current = readLocalDatabase();
+    const updated = current.messages.filter(m => m.id !== id);
+    writeLocalDatabase({ messages: updated });
+    return;
   }
   try {
     const { deleteDoc } = await import("firebase/firestore");
@@ -587,8 +693,11 @@ export async function deleteMessage(id: string): Promise<void> {
 }
 
 export async function updateMessageStatus(id: string, updates: Partial<Message>): Promise<void> {
-  if (!db) {
-    throw new Error("Firebase não configurado. Não é possível atualizar mensagens no modo de fallback local.");
+  if (isLocalDatabaseOnly() || !db) {
+    const current = readLocalDatabase();
+    const updated = current.messages.map(m => m.id === id ? { ...m, ...updates } : m);
+    writeLocalDatabase({ messages: updated });
+    return;
   }
   try {
     const docRef = doc(db, "messages", id);
@@ -603,15 +712,14 @@ export async function updateMessageStatus(id: string, updates: Partial<Message>)
 }
 
 export async function getSettings(): Promise<AppSettings> {
-  if (!db) {
-    console.warn("Firebase not configured. Returning DEFAULT_SETTINGS fallback.");
-    return DEFAULT_SETTINGS;
+  if (isLocalDatabaseOnly() || !db) {
+    return readLocalDatabase().settings;
   }
   try {
     const snapshot = await getDocs(collection(db, "settings"));
     const generalDoc = snapshot.docs.find(d => d.id === "general") || snapshot.docs.find(d => d.id === "general_inova");
     if (!generalDoc) {
-      return DEFAULT_SETTINGS;
+      return readLocalDatabase().settings;
     }
     const data = generalDoc.data();
     const merged = { ...DEFAULT_SETTINGS, ...data } as AppSettings;
@@ -663,13 +771,14 @@ export async function getSettings(): Promise<AppSettings> {
       handleFirestoreError(e, OperationType.GET, "settings");
     }
     console.error("Error fetching settings from Firestore:", e);
-    return DEFAULT_SETTINGS;
+    return readLocalDatabase().settings;
   }
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
-  if (!db) {
-    throw new Error("Firebase não configurado. Não é possível salvar configurações no modo de fallback local.");
+  if (isLocalDatabaseOnly() || !db) {
+    writeLocalDatabase({ settings });
+    return;
   }
   try {
     const docRef = doc(db, "settings", "general");

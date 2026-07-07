@@ -32,6 +32,7 @@ interface AppSettings {
   adminPassword?: string;
   isAdminOnline?: boolean;
   contactEmail?: string;
+  useLocalDatabaseOnly?: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -50,7 +51,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   logoUrl: "",
   adminPassword: "admin123",
   isAdminOnline: true,
-  contactEmail: "bambuzau3d@gmail.com"
+  contactEmail: "bambuzau3d@gmail.com",
+  useLocalDatabaseOnly: false
 };
 
 const DAMASK_WALLPAPER = `data:image/svg+xml,${encodeURIComponent(`

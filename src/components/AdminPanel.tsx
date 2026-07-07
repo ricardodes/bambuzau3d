@@ -51,6 +51,7 @@ interface AppSettings {
   adminPassword?: string;
   isAdminOnline?: boolean;
   contactEmail?: string;
+  useLocalDatabaseOnly?: boolean;
 }
 
 interface AdminPanelProps {
@@ -306,7 +307,16 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: passwordInput })
       });
-      const data = await res.json();
+      
+      let data: any = {};
+      const resText = await res.text();
+      try {
+        data = JSON.parse(resText);
+      } catch (parseErr) {
+        console.error("Failed to parse response as JSON:", resText);
+        throw new Error("O servidor retornou uma resposta inválida (não-JSON).");
+      }
+
       if (data.success) {
         setIsAuthenticated(true);
         localStorage.setItem("admin_authenticated", "true");
@@ -316,7 +326,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
         // Re-run the resilient fetchData which handles setting, products and messages
         await fetchData();
       } else {
-        setAuthError("Senha de acesso incorreta.");
+        setAuthError(data.error || "Senha de acesso incorreta.");
       }
     } catch (err: any) {
       console.error("Login verification error:", err);
@@ -1717,6 +1727,66 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
                         <span style={{ fontSize: "0.68rem", color: "var(--color-fg-muted)", marginTop: "0.25rem", display: "block" }}>
                           Mude a senha usada para entrar na área administrativa (Padrão: admin123).
                         </span>
+                      </div>
+                    </div>
+
+                    {/* Database Engine Toggle Card */}
+                    <div style={{ background: "#13131F", border: "1px solid #1F1F2E", padding: "1.25rem", borderRadius: "0.5rem", marginTop: "0.5rem" }}>
+                      <h3 style={{ fontFamily: "var(--font-display)", fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem", color: "#C4933A" }}>
+                        Motor do Banco de Dados / Database Engine
+                      </h3>
+                      <p style={{ color: "#AEAEB2", fontSize: "0.78rem", lineHeight: 1.4, marginBottom: "1rem" }}>
+                        Caso tenha problemas de conexão, cotas esgotadas ou permissões com o Firebase Firestore Cloud, você pode mudar o banco de dados para o modo local de segurança. No modo local, todos os dados são lidos e salvos diretamente no arquivo JSON do servidor.
+                      </p>
+                      
+                      <div style={{ display: "flex", gap: "1rem" }} className="flex flex-col sm:flex-row">
+                        <label style={{ 
+                          flex: 1, 
+                          display: "flex", 
+                          alignItems: "flex-start", 
+                          gap: "0.75rem", 
+                          background: !settings.useLocalDatabaseOnly ? "rgba(196,147,58,0.05)" : "#1A1A26", 
+                          border: !settings.useLocalDatabaseOnly ? "1px solid #C4933A" : "1px solid #2B2B3D", 
+                          borderRadius: "0.5rem", 
+                          padding: "0.85rem", 
+                          cursor: "pointer" 
+                        }}>
+                          <input 
+                            type="radio" 
+                            name="dbEngine" 
+                            checked={!settings.useLocalDatabaseOnly} 
+                            onChange={() => updateSettingField("useLocalDatabaseOnly", false)}
+                            style={{ marginTop: "0.15rem", cursor: "pointer", accentColor: "#C4933A" }}
+                          />
+                          <div>
+                            <span style={{ fontSize: "0.82rem", fontWeight: 600, display: "block", color: !settings.useLocalDatabaseOnly ? "#C4933A" : "#fff" }}>Firebase Firestore (Nuvem)</span>
+                            <span style={{ fontSize: "0.68rem", color: "#AEAEB2" }}>Recomendado. Sincroniza em tempo real na nuvem do Google Firebase.</span>
+                          </div>
+                        </label>
+
+                        <label style={{ 
+                          flex: 1, 
+                          display: "flex", 
+                          alignItems: "flex-start", 
+                          gap: "0.75rem", 
+                          background: settings.useLocalDatabaseOnly ? "rgba(196,147,58,0.05)" : "#1A1A26", 
+                          border: settings.useLocalDatabaseOnly ? "1px solid #C4933A" : "1px solid #2B2B3D", 
+                          borderRadius: "0.5rem", 
+                          padding: "0.85rem", 
+                          cursor: "pointer" 
+                        }}>
+                          <input 
+                            type="radio" 
+                            name="dbEngine" 
+                            checked={!!settings.useLocalDatabaseOnly} 
+                            onChange={() => updateSettingField("useLocalDatabaseOnly", true)}
+                            style={{ marginTop: "0.15rem", cursor: "pointer", accentColor: "#C4933A" }}
+                          />
+                          <div>
+                            <span style={{ fontSize: "0.82rem", fontWeight: 600, display: "block", color: settings.useLocalDatabaseOnly ? "#C4933A" : "#fff" }}>Banco de Dados Local (JSON)</span>
+                            <span style={{ fontSize: "0.68rem", color: "#AEAEB2" }}>Altamente estável e offline. Salva e lê dados diretamente de arquivos locais no servidor.</span>
+                          </div>
+                        </label>
                       </div>
                     </div>
 
