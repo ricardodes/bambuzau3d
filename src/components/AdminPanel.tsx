@@ -201,40 +201,69 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
 
   const fetchData = async () => {
     setLoading(true);
-    try {
-      // Fetch Products
-      const prodRes = await fetch("/api/products");
-      const prodData = await prodRes.json();
-      if (prodData.success) {
-        setProducts(prodData.products);
-      }
+    let loadedProducts = false;
+    let loadedSettings = false;
 
-      // Fetch Settings with admin password header if available to securely load the admin fields
-      const adminPass = getAdminPassword();
+    // 1. Fetch Products
+    try {
+      const prodRes = await fetch("/api/products");
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
+        if (prodData.success) {
+          setProducts(prodData.products);
+          loadedProducts = true;
+        }
+      } else {
+        console.warn("Products API response not OK:", prodRes.status);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar produtos:", err);
+    }
+
+    // 2. Fetch Settings
+    const adminPass = getAdminPassword();
+    try {
       const settingsRes = await fetch("/api/settings", {
         headers: adminPass ? { "x-admin-password": adminPass } : undefined
       });
-      const settingsData = await settingsRes.json();
-      if (settingsData.success) {
-        setSettings(settingsData.settings);
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json();
+        if (settingsData.success) {
+          setSettings(settingsData.settings);
+          loadedSettings = true;
+        }
+      } else {
+        console.warn("Settings API response not OK:", settingsRes.status);
       }
+    } catch (err) {
+      console.error("Erro ao carregar configurações:", err);
+    }
 
-      // Fetch Messages (only if password is available)
-      if (adminPass) {
+    // 3. Fetch Messages (only if password is available)
+    if (adminPass) {
+      try {
         const msgRes = await fetch("/api/messages", {
           headers: { "x-admin-password": adminPass }
         });
-        const msgData = await msgRes.json();
-        if (msgData.success) {
-          setMessages(msgData.messages || []);
+        if (msgRes.ok) {
+          const msgData = await msgRes.json();
+          if (msgData.success) {
+            setMessages(msgData.messages || []);
+          }
+        } else {
+          console.warn("Messages API response not OK:", msgRes.status);
         }
+      } catch (err) {
+        console.error("Erro ao carregar mensagens:", err);
       }
-    } catch (err) {
-      console.error("Error loading admin data:", err);
-      showToast("Falha ao carregar dados do banco", "error");
-    } finally {
-      setLoading(false);
     }
+
+    // Fallback notification only if both core entities completely fail
+    if (!loadedProducts && !loadedSettings) {
+      showToast("Falha ao carregar alguns dados do banco. Usando dados locais como fallback.", "error");
+    }
+
+    setLoading(false);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -254,30 +283,8 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
         localStorage.setItem("admin_password", passwordInput);
         showToast("Acesso autorizado!");
         
-        // Load authenticated settings and products
-        setLoading(true);
-        // Fetch products
-        const prodRes = await fetch("/api/products");
-        const prodData = await prodRes.json();
-        if (prodData.success) {
-          setProducts(prodData.products);
-        }
-        // Fetch Settings with the newly validated password
-        const settingsRes = await fetch("/api/settings", {
-          headers: { "x-admin-password": passwordInput }
-        });
-        const settingsData = await settingsRes.json();
-        if (settingsData.success) {
-          setSettings(settingsData.settings);
-        }
-        // Fetch messages
-        const msgRes = await fetch("/api/messages", {
-          headers: { "x-admin-password": passwordInput }
-        });
-        const msgData = await msgRes.json();
-        if (msgData.success) {
-          setMessages(msgData.messages || []);
-        }
+        // Re-run the resilient fetchData which handles setting, products and messages
+        await fetchData();
       } else {
         setAuthError("Senha de acesso incorreta.");
       }

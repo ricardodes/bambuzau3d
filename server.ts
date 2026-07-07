@@ -26,7 +26,7 @@ import {
 
 const app = express();
 
-async function startServer() {
+function startServer() {
   
   // Custom Security Headers middleware to enforce platform safety and defend against common attacks
   app.use((_req, res, next) => {
@@ -138,20 +138,16 @@ async function startServer() {
   };
 
   // Seed the Firestore database on startup (runs on Vercel too!)
-  try {
-    await seedDatabaseIfEmpty();
-  } catch (err) {
+  seedDatabaseIfEmpty().catch((err) => {
     console.error('Falha ao rodar o seeder do Firebase:', err);
-  }
+  });
 
   // Seed local daily backups on startup (runs on local dev server only)
   const isVercel = !!process.env.VERCEL;
   if (!isVercel) {
-    try {
-      await triggerAutomaticDailyBackup();
-    } catch (err) {
+    triggerAutomaticDailyBackup().catch((err) => {
       console.error('Falha ao rodar backups locais:', err);
-    }
+    });
   }
 
   // API Health check route
@@ -521,11 +517,14 @@ async function startServer() {
   const isVercelEnv = !!process.env.VERCEL;
   const isProd = process.env.NODE_ENV === 'production' || isVercelEnv;
   if (!isProd) {
-    const vite = await createViteServer({
+    createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
+    }).then((vite) => {
+      app.use(vite.middlewares);
+    }).catch((err) => {
+      console.error('Failed to create Vite server:', err);
     });
-    app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
@@ -542,8 +541,10 @@ async function startServer() {
   }
 }
 
-startServer().catch((err) => {
+try {
+  startServer();
+} catch (err) {
   console.error('Falha ao iniciar o servidor:', err);
-});
+}
 
 export default app;
