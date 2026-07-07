@@ -5,7 +5,8 @@ import {
   getDocs, 
   doc, 
   setDoc, 
-  writeBatch
+  writeBatch,
+  deleteDoc
 } from "firebase/firestore";
 import fs from "fs";
 import path from "path";
@@ -818,6 +819,89 @@ export async function forceSyncDatabase(): Promise<{ success: boolean; message: 
     };
   } catch (e: any) {
     console.error("[Force Sync] Error:", e);
+    throw e;
+  }
+}
+
+export async function forceRecreateDatabase(): Promise<{ success: boolean; message: string }> {
+  if (!db) {
+    throw new Error("Firebase não configurado. Não é possível recriar o banco de dados no modo local.");
+  }
+  try {
+    console.log("[Force Recreate] Iniciando recriação completa do banco de dados...");
+
+    // 1. Fetch and delete existing documents in products
+    const productsCol = collection(db, "products");
+    const productsSnapshot = await getDocs(productsCol);
+    for (const docSnap of productsSnapshot.docs) {
+      await deleteDoc(docSnap.ref);
+    }
+    console.log("[Force Recreate] Produtos antigos removidos.");
+
+    // 2. Fetch and delete existing documents in categories
+    const categoriesCol = collection(db, "categories");
+    const categoriesSnapshot = await getDocs(categoriesCol);
+    for (const docSnap of categoriesSnapshot.docs) {
+      await deleteDoc(docSnap.ref);
+    }
+    console.log("[Force Recreate] Categorias antigas removidas.");
+
+    // 3. Fetch and delete existing documents in settings
+    const settingsCol = collection(db, "settings");
+    const settingsSnapshot = await getDocs(settingsCol);
+    for (const docSnap of settingsSnapshot.docs) {
+      await deleteDoc(docSnap.ref);
+    }
+    console.log("[Force Recreate] Configurações antigas removidas.");
+
+    // 4. Fetch and delete existing documents in messages
+    const messagesCol = collection(db, "messages");
+    const messagesSnapshot = await getDocs(messagesCol);
+    for (const docSnap of messagesSnapshot.docs) {
+      await deleteDoc(docSnap.ref);
+    }
+    console.log("[Force Recreate] Mensagens antigas removidas.");
+
+    // 5. Overwrite local backup file with clean template defaults
+    const backupPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
+    const pristineData = {
+      settings: DEFAULT_SETTINGS,
+      categories: DEFAULT_CATEGORIES,
+      products: DEFAULT_PRODUCTS,
+      messages: [],
+      lastUpdated: new Date().toISOString()
+    };
+    fs.writeFileSync(backupPath, JSON.stringify(pristineData, null, 2), "utf-8");
+    console.log("[Force Recreate] Arquivo JSON local sobrescrito com os dados padrão.");
+
+    // 6. Write defaults back to Firestore
+    // Write Settings
+    const settingsDocRef = doc(db, "settings", "general");
+    await setDoc(settingsDocRef, DEFAULT_SETTINGS);
+
+    // Write Categories in batch
+    const catBatch = writeBatch(db);
+    for (const cat of DEFAULT_CATEGORIES) {
+      const docRef = doc(db, "categories", cat.id);
+      catBatch.set(docRef, cat);
+    }
+    await catBatch.commit();
+
+    // Write Products in batch
+    const prodBatch = writeBatch(db);
+    for (const prod of DEFAULT_PRODUCTS) {
+      const docRef = doc(db, "products", String(prod.id));
+      prodBatch.set(docRef, prod);
+    }
+    await prodBatch.commit();
+
+    console.log("[Force Recreate] Banco de dados totalmente recriado e restabelecido!");
+    return {
+      success: true,
+      message: "Banco de dados recriado com sucesso com as configurações e produtos originais!"
+    };
+  } catch (e: any) {
+    console.error("[Force Recreate] Falha na recriação:", e);
     throw e;
   }
 }

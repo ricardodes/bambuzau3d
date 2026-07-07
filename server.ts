@@ -522,6 +522,18 @@ function startServer() {
     }
   });
 
+  // Recreate the database from pristine templates
+  app.post('/api/backup/recreate-db', adminAuthMiddleware, async (_req, res) => {
+    try {
+      const { forceRecreateDatabase } = await import('./src/lib/firebase-server');
+      const result = await forceRecreateDatabase();
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error recreating database:', err);
+      res.status(500).json({ success: false, error: `Falha ao recriar o banco de dados: ${err.message || err}` });
+    }
+  });
+
   // Serve static assets or use Vite in dev mode
   const isVercelEnv = !!process.env.VERCEL;
   const isProd = process.env.NODE_ENV === 'production' || isVercelEnv;

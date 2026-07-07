@@ -121,6 +121,8 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
 
   const [dailyBackups, setDailyBackups] = useState<{ name: string; size: string; createdAt: string }[]>([]);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isRecreatingDb, setIsRecreatingDb] = useState(false);
+  const [showConfirmRecreate, setShowConfirmRecreate] = useState(false);
 
   const fetchBackupsList = async () => {
     try {
@@ -177,6 +179,34 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
       console.error(err);
       showToast("Falha ao processar o arquivo.", "error");
       setIsRestoring(false);
+    }
+  };
+
+  const handleRecreateDatabase = async () => {
+    setIsRecreatingDb(true);
+    try {
+      showToast("Recriando banco de dados com as configurações originais...");
+      const res = await fetch("/api/backup/recreate-db", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-password": getAdminPassword() || ""
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast("Banco de dados totalmente recriado com sucesso!", "success");
+        setShowConfirmRecreate(false);
+        await fetchData();
+        await fetchBackupsList();
+      } else {
+        showToast(data.error || "Erro ao recriar o banco de dados.", "error");
+      }
+    } catch (err: any) {
+      console.error("Erro ao recriar banco:", err);
+      showToast(`Erro ao recriar banco: ${err?.message || err}`, "error");
+    } finally {
+      setIsRecreatingDb(false);
     }
   };
 
@@ -1972,6 +2002,93 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
                         </p>
                         <span style={{ fontSize: "0.65rem", color: "#AEAEB2", marginTop: "0.25rem", display: "block" }}>Arraste o arquivo ou clique para selecionar</span>
                       </div>
+                    </div>
+
+                    {/* Recreate/Reset Database Card */}
+                    <div style={{ background: "#1A1A26", border: "1px solid #3E1F24", borderRadius: "0.75rem", padding: "1.5rem" }} className="col-span-1 md:col-span-2">
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
+                        <div style={{ padding: "0.5rem", borderRadius: "0.5rem", background: "rgba(239,68,68,0.1)", color: "#EF4444" }}>
+                          <RefreshCw size={20} className={isRecreatingDb ? "animate-spin" : ""} />
+                        </div>
+                        <div>
+                          <h3 style={{ fontSize: "0.95rem", fontWeight: 700, margin: 0, color: "#fff" }}>Resetar / Recriar Banco de Dados</h3>
+                          <span style={{ fontSize: "0.72rem", color: "#EF4444", display: "inline-flex", alignItems: "center", gap: "0.25rem", marginTop: "0.15rem" }}>
+                            Zona de Perigo • Ação Irreversível
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <p style={{ fontSize: "0.78rem", color: "#AEAEB2", marginBottom: "1.25rem", lineHeight: 1.4 }}>
+                        Apaga permanentemente todas as alterações, produtos adicionados, mensagens recebidas e configurações atuais do Firestore e do banco de dados local. O banco de dados será totalmente recriado do zero com os produtos, categorias e configurações originais de fábrica do Bambuzau 3D.
+                      </p>
+
+                      {!showConfirmRecreate ? (
+                        <button
+                          onClick={() => setShowConfirmRecreate(true)}
+                          disabled={isRecreatingDb}
+                          style={{
+                            background: "transparent",
+                            border: "1px solid #EF4444",
+                            color: "#EF4444",
+                            fontSize: "0.8rem",
+                            padding: "0.5rem 1rem",
+                            borderRadius: "0.5rem",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                            transition: "all 0.2s"
+                          }}
+                          className="hover:bg-red-500/10"
+                        >
+                          <RefreshCw size={14} />
+                          {isRecreatingDb ? "Processando..." : "Refazer Banco de Dados do Zero"}
+                        </button>
+                      ) : (
+                        <div style={{ background: "#251417", border: "1px solid #5A1E24", borderRadius: "0.5rem", padding: "1rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                          <p style={{ margin: 0, fontSize: "0.75rem", color: "#FCA5A5", fontWeight: 500 }}>
+                            ⚠️ ATENÇÃO: Tem certeza de que deseja apagar tudo e recriar o banco? Todos os dados atuais serão perdidos permanentemente!
+                          </p>
+                          <div style={{ display: "flex", gap: "0.75rem" }}>
+                            <button
+                              onClick={handleRecreateDatabase}
+                              disabled={isRecreatingDb}
+                              style={{
+                                background: "#EF4444",
+                                border: "none",
+                                color: "#fff",
+                                fontSize: "0.75rem",
+                                padding: "0.4rem 0.8rem",
+                                borderRadius: "0.375rem",
+                                cursor: "pointer",
+                                fontWeight: 700,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.25rem"
+                              }}
+                            >
+                              {isRecreatingDb ? "Recriando..." : "Sim, Apagar Tudo e Recriar"}
+                            </button>
+                            <button
+                              onClick={() => setShowConfirmRecreate(false)}
+                              disabled={isRecreatingDb}
+                              style={{
+                                background: "#222235",
+                                border: "1px solid #2B2B3D",
+                                color: "#AEAEB2",
+                                fontSize: "0.75rem",
+                                padding: "0.4rem 0.8rem",
+                                borderRadius: "0.375rem",
+                                cursor: "pointer",
+                                fontWeight: 600
+                              }}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
