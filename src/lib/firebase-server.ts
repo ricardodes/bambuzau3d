@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { 
-  getFirestore, 
+  initializeFirestore, 
   collection, 
   getDocs, 
   doc, 
@@ -29,7 +29,11 @@ if (!config) {
 }
 
 export const app = config ? (getApps().length === 0 ? initializeApp(config) : getApp()) : null;
-export const db = app ? (config.firestoreDatabaseId ? getFirestore(app, config.firestoreDatabaseId) : getFirestore(app)) : null;
+export const db = app 
+  ? (config.firestoreDatabaseId 
+      ? initializeFirestore(app, { experimentalForceLongPolling: true }, config.firestoreDatabaseId)
+      : initializeFirestore(app, { experimentalForceLongPolling: true }))
+  : null;
 
 // Category Interface
 export interface Category {

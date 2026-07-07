@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <!-- Green Circular Border Frame -->
+  <circle
+    cx="80"
+    cy="80"
+    r="70"
+    fill="none"
+    stroke="#1E4D2B"
+    strokeWidth="5"
+    strokeDasharray="240 10 240 10"
+  />
+  
+  <!-- Left Bamboo Stalk (Forest Green) -->
+  <path
+    d="M58 115 C58 85, 62 60, 56 45"
+    fill="none"
+    stroke="#1E4D2B"
+    strokeWidth="7"
+    strokeLinecap="round"
+  />
+  <!-- Segment joints for Left Bamboo -->
+  <line x1="56.5" y1="95" x2="60.5" y2="93" stroke="#FAF6F0" strokeWidth="2" />
+  <line x1="58.5" y1="75" x2="61.5" y2="73" stroke="#FAF6F0" strokeWidth="2" />
+  <line x1="57" y1="58" x2="59.5" y2="56" stroke="#FAF6F0" strokeWidth="2" />
+
+  <!-- Middle Bamboo Stalk (Bamboo Yellow/Orange) -->
+  <path
+    d="M80 120 C81 85, 83 55, 78 35"
+    fill="none"
+    stroke="#F2A202"
+    strokeWidth="9"
+    strokeLinecap="round"
+  />
+  <!-- Segment joints for Middle Bamboo -->
+  <line x1="77.5" y1="98" x2="84.5" y2="97" stroke="#FAF6F0" strokeWidth="2.5" />
+  <line x1="78.5" y1="72" x2="85" y2="71" stroke="#FAF6F0" strokeWidth="2.5" />
+  <line x1="77" y1="48" x2="82" y2="47.5" stroke="#FAF6F0" strokeWidth="2.5" />
+
+  <!-- Right Bamboo Stalk (Forest Green) -->
+  <path
+    d="M102 115 C101 88, 103 62, 97 45"
+    fill="none"
+    stroke="#1E4D2B"
+    strokeWidth="7"
+    strokeLinecap="round"
+  />
+  <!-- Segment joints for Right Bamboo -->
+  <line x1="99" y1="94" x2="103.5" y2="92.5" stroke="#FAF6F0" strokeWidth="2" />
+  <line x1="100.5" y1="74" x2="104.5" y2="72" stroke="#FAF6F0" strokeWidth="2" />
+  <line x1="97.5" y1="56" x2="101" y2="54.5" stroke="#FAF6F0" strokeWidth="2" />
+
+  <!-- Delicate Leaves (Forest Green & Orange) -->
+  <!-- Left Leaves -->
+  <path d="M58 75 C45 70, 42 62, 45 58 C48 65, 54 70, 58 75 Z" fill="#1E4D2B" />
+  <path d="M56 45 C42 42, 40 32, 44 28 C47 36, 52 42, 56 45 Z" fill="#1E4D2B" />
+  <path d="M60 93 C48 95, 42 100, 44 104 C48 99, 55 96, 60 93 Z" fill="#1E4D2B" />
+
+  <!-- Right Leaves -->
+  <path d="M102 74 C115 70, 118 62, 115 58 C112 65, 106 70, 102 74 Z" fill="#1E4D2B" />
+  <path d="M97 45 C111 42, 113 32, 109 28 C106 36, 101 42, 97 45 Z" fill="#1E4D2B" />
+  <path d="M101 92 C114 93, 118 97, 116 102 C112 97, 105 95, 101 92 Z" fill="#1E4D2B" />
+
+  <!-- Middle Leaves -->
+  <path d="M81 72 C92 65, 95 55, 91 51 C88 59, 84 66, 81 72 Z" fill="#F2A202" />
+  <path d="M79 98 C68 92, 65 82, 69 78 C72 86, 76 93, 79 98 Z" fill="#F2A202" />
+</svg>
