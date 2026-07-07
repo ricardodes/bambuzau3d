@@ -301,7 +301,7 @@ function startServer() {
       if (password === correctPassword) {
         res.json({ success: true });
       } else {
-        res.status(401).json({ success: false, error: 'Senha incorreta' });
+        res.json({ success: false, error: 'Senha incorreta' });
       }
     } catch (err) {
       console.error('Error verifying password:', err);

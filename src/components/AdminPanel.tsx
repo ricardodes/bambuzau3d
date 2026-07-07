@@ -314,7 +314,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
         data = JSON.parse(resText);
       } catch (parseErr) {
         console.error("Failed to parse response as JSON:", resText);
-        throw new Error("O servidor retornou uma resposta inválida (não-JSON).");
+        throw new Error(`Resposta inválida do servidor: ${resText.substring(0, 150)}`);
       }
 
       if (data.success) {
