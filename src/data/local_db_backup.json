@@ -1,0 +1,24 @@
+{
+  "settings": {
+    "storeName": "Bambuzau 3D",
+    "storeDescription": "Personalizados que conectam. O melhor do universo Geek, Marvel, decorações sofisticadas e impressões 3D sob medida com o mais alto nível de acabamento.",
+    "shopeeStoreUrl": "https://shopee.com.br/bambuzau3d",
+    "whatsAppPhone": "5515997788281",
+    "whatsAppMessage": "Olá Bambuzau 3D! Gostaria de encomendar uma peça personalizada!",
+    "whatsAppEnabled": true,
+    "socialInstagram": "bambuzau3d",
+    "socialFacebook": "",
+    "socialYoutube": "",
+    "socialTelegram": "",
+    "wholesaleWhatsApp": "5515997788281",
+    "wholesaleTelegram": "",
+    "logoUrl": "",
+    "adminPassword": "admin123",
+    "isAdminOnline": true,
+    "contactEmail": "bambuzau3d@gmail.com",
+    "useLocalDatabaseOnly": false
+  },
+  "categories": [],
+  "products": [],
+  "messages": []
+}
