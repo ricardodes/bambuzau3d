@@ -137,10 +137,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const ip = ((req.headers['x-forwarded-for'] as string) || '').split(',')[0].trim() || 'unknown';
   const { method } = req;
-  // Normaliza o path — com [...path].ts o req.url chega sem o prefixo /api/
-  // Ex: req.url = '/backup/download' → route = '/api/backup/download'
-  const rawPath = (req.url || '/').split('?')[0].replace(/\/$/, '');
-  const route = rawPath.startsWith('/api') ? rawPath : `/api${rawPath}`;
+
+  // Determina a rota de forma robusta:
+  // 1) Se a Vercel populou o parâmetro dinâmico da catch-all (req.query.path), usa ele.
+  // 2) Senão, extrai o pathname de req.url — que pode vir relativo ("/api/x") ou
+  //    absoluto ("https://dominio.com/api/x") dependendo do runtime — via WHATWG URL,
+  //    o que evita concatenar prefixos errados e virar um caminho inválido.
+  let route: string;
+  const qp = (req.query as any)?.path;
+  if (Array.isArray(qp) && qp.length) {
+    route = '/api/' + qp.join('/');
+  } else if (typeof qp === 'string' && qp) {
+    route = '/api/' + qp;
+  } else {
+    let pathname: string;
+    try {
+      pathname = new URL(req.url || '/', 'http://internal').pathname;
+    } catch {
+      pathname = (req.url || '/').split('?')[0];
+    }
+    pathname = pathname.replace(/\/$/, '') || '/';
+    route = pathname.startsWith('/api') ? pathname : `/api${pathname}`;
+  }
   console.log(`[API] ${method} ${route}`);
 
   // Rate limit geral
