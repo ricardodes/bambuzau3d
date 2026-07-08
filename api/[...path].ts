@@ -135,9 +135,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
 
   const ip = ((req.headers['x-forwarded-for'] as string) || '').split(',')[0].trim() || 'unknown';
-  const { method, query } = req;
-  const pathParam = Array.isArray(query.path) ? query.path.join('/') : (query.path || '');
-  const route = `/api/${pathParam}`;
+  const { method } = req;
+  // Extrai o path do URL real ignorando query strings
+  const rawUrl = req.url || '/';
+  const route = rawUrl.split('?')[0].replace(/\/$/, '') || '/';
+  console.log(`[API] ${method} ${route}`);
 
   // Rate limit geral
   if (!rateLimit(ip, 150, 60000)) {
