@@ -1,5 +1,4 @@
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import { 
@@ -538,13 +537,17 @@ function startServer() {
   const isVercelEnv = !!process.env.VERCEL;
   const isProd = process.env.NODE_ENV === 'production' || isVercelEnv;
   if (!isProd) {
-    createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    }).then((vite) => {
-      app.use(vite.middlewares);
+    import('vite').then(({ createServer: createViteServer }) => {
+      createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      }).then((vite) => {
+        app.use(vite.middlewares);
+      }).catch((err) => {
+        console.error('Failed to create Vite server:', err);
+      });
     }).catch((err) => {
-      console.error('Failed to create Vite server:', err);
+      console.error('Failed to dynamically import Vite:', err);
     });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
