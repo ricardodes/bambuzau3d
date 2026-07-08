@@ -11,9 +11,15 @@ import {
 } from "firebase/firestore";
 import fs from "fs";
 import path from "path";
+import appletConfig from "../../firebase-applet-config.json";
 
 // Find and load firebase-applet-config.json with robust fallback paths
 const loadConfig = () => {
+  if (appletConfig && appletConfig.projectId) {
+    console.log("[Firebase Config] Successfully loaded config from static import.");
+    return appletConfig;
+  }
+
   const searchPaths = [
     path.join(process.cwd(), "firebase-applet-config.json"),
     path.join(process.cwd(), "src", "lib", "firebase-applet-config.json")
@@ -560,16 +566,13 @@ export function isLocalDatabaseOnly(): boolean {
   if (process.env.USE_LOCAL_DB === "true") {
     return true;
   }
-  const backupPath = getBackupPath();
-  if (fs.existsSync(backupPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(backupPath, "utf-8"));
-      if (data?.settings?.useLocalDatabaseOnly === true) {
-        return true;
-      }
-    } catch (e) {
-      // ignore
+  try {
+    const data = readLocalDatabase();
+    if (data?.settings?.useLocalDatabaseOnly === true) {
+      return true;
     }
+  } catch (e) {
+    // ignore
   }
   return false;
 }
@@ -582,6 +585,7 @@ export function readLocalDatabase(): {
   messages: any[];
 } {
   const backupPath = getBackupPath();
+  const shippedPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
   const defaultData = {
     settings: DEFAULT_SETTINGS,
     categories: DEFAULT_CATEGORIES,
@@ -589,21 +593,45 @@ export function readLocalDatabase(): {
     messages: []
   };
 
+  // Determine the best source of truth for reading
+  let activePath = backupPath;
   if (!fs.existsSync(backupPath)) {
-    const dir = path.dirname(backupPath);
-    try {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+    if (fs.existsSync(shippedPath)) {
+      activePath = shippedPath;
+      console.log("[Local DB] Active path fell back to shipped file:", shippedPath);
+    } else {
+      // Neither exists, create a default in backupPath
+      const dir = path.dirname(backupPath);
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(backupPath, JSON.stringify(defaultData, null, 2), "utf-8");
+      } catch (writeErr) {
+        console.warn("[Local DB] Failed to write default database JSON (read-only filesystem?):", writeErr);
       }
-      fs.writeFileSync(backupPath, JSON.stringify(defaultData, null, 2), "utf-8");
-    } catch (writeErr) {
-      console.warn("[Local DB] Failed to write default database JSON (read-only filesystem?):", writeErr);
+      return defaultData;
     }
-    return defaultData;
   }
 
   try {
-    const data = JSON.parse(fs.readFileSync(backupPath, "utf-8"));
+    const fileContent = fs.readFileSync(activePath, "utf-8");
+    const data = JSON.parse(fileContent);
+
+    // If we used the shipped file as fallback, try to copy it to backupPath (e.g., in /tmp) so future writes have it as base
+    if (activePath === shippedPath && backupPath !== shippedPath) {
+      const dir = path.dirname(backupPath);
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(backupPath, fileContent, "utf-8");
+        console.log("[Local DB] Successfully cached shipped DB file into:", backupPath);
+      } catch (writeErr) {
+        console.warn("[Local DB] Failed to cache shipped DB file into writeable path:", writeErr);
+      }
+    }
+
     return {
       settings: { ...DEFAULT_SETTINGS, ...(data.settings || {}) },
       categories: data.categories || DEFAULT_CATEGORIES,
