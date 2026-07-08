@@ -13,16 +13,28 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const getModulePaths = () => {
+  if (typeof __dirname !== "undefined") {
+    return { __dirname, __filename: typeof __filename !== "undefined" ? __filename : "" };
+  }
+  try {
+    const filename = fileURLToPath(new Function("return import.meta.url")());
+    const dirname = path.dirname(filename);
+    return { __dirname: dirname, __filename: filename };
+  } catch (e) {
+    return { __dirname: process.cwd(), __filename: "" };
+  }
+};
+
+const { __dirname: resolvedDirname } = getModulePaths();
 
 // Find and load firebase-applet-config.json with robust fallback paths
 const loadConfig = () => {
   const searchPaths = [
     path.join(process.cwd(), "firebase-applet-config.json"),
-    path.join(__dirname, "firebase-applet-config.json"),
-    path.join(__dirname, "..", "firebase-applet-config.json"),
-    path.join(__dirname, "../..", "firebase-applet-config.json")
+    path.join(resolvedDirname, "firebase-applet-config.json"),
+    path.join(resolvedDirname, "..", "firebase-applet-config.json"),
+    path.join(resolvedDirname, "../..", "firebase-applet-config.json")
   ];
 
   for (const p of searchPaths) {
