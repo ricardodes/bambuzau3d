@@ -12,6 +12,7 @@ import {
 import fs from "fs";
 import path from "path";
 import appletConfig from "../../firebase-applet-config.json";
+import shippedLocalDb from "../data/local_db_backup.json";
 
 // Find and load firebase-applet-config.json with robust fallback paths
 const loadConfig = () => {
@@ -59,13 +60,13 @@ const getSafeFirestore = () => {
   if (!app) return null;
   const dbId = config.firestoreDatabaseId || "(default)";
   try {
-    // Try retrieving existing instance for the specific database ID
-    return getFirestore(app, dbId);
+    // Force long-polling to prevent gRPC streaming/connection RST_STREAM crashes on serverless (Vercel)
+    return initializeFirestore(app, { experimentalForceLongPolling: true }, dbId);
   } catch (err) {
     try {
-      return initializeFirestore(app, { experimentalForceLongPolling: true }, dbId);
-    } catch (initErr) {
-      console.error("Critical: Failed to initialize Firestore:", initErr);
+      return getFirestore(app, dbId);
+    } catch (getErr) {
+      console.error("Critical: Failed to get/initialize Firestore:", getErr);
       return null;
     }
   }
@@ -585,7 +586,6 @@ export function readLocalDatabase(): {
   messages: any[];
 } {
   const backupPath = getBackupPath();
-  const shippedPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
   const defaultData = {
     settings: DEFAULT_SETTINGS,
     categories: DEFAULT_CATEGORIES,
@@ -594,43 +594,33 @@ export function readLocalDatabase(): {
   };
 
   // Determine the best source of truth for reading
-  let activePath = backupPath;
   if (!fs.existsSync(backupPath)) {
-    if (fs.existsSync(shippedPath)) {
-      activePath = shippedPath;
-      console.log("[Local DB] Active path fell back to shipped file:", shippedPath);
-    } else {
-      // Neither exists, create a default in backupPath
+    if (shippedLocalDb) {
+      console.log("[Local DB] Active path fell back to statically imported JSON data.");
+      // Cache statically imported data to writeable backupPath if possible
       const dir = path.dirname(backupPath);
       try {
         if (!fs.existsSync(dir)) {
           fs.mkdirSync(dir, { recursive: true });
         }
-        fs.writeFileSync(backupPath, JSON.stringify(defaultData, null, 2), "utf-8");
+        fs.writeFileSync(backupPath, JSON.stringify(shippedLocalDb, null, 2), "utf-8");
+        console.log("[Local DB] Cached statically imported DB into writable path:", backupPath);
       } catch (writeErr) {
-        console.warn("[Local DB] Failed to write default database JSON (read-only filesystem?):", writeErr);
+        console.warn("[Local DB] Failed to cache statically imported DB into writable path:", writeErr);
       }
-      return defaultData;
+      return {
+        settings: { ...DEFAULT_SETTINGS, ...(shippedLocalDb.settings || {}) },
+        categories: (shippedLocalDb.categories || DEFAULT_CATEGORIES) as Category[],
+        products: (shippedLocalDb.products || DEFAULT_PRODUCTS) as Product[],
+        messages: shippedLocalDb.messages || []
+      };
     }
+    return defaultData;
   }
 
   try {
-    const fileContent = fs.readFileSync(activePath, "utf-8");
+    const fileContent = fs.readFileSync(backupPath, "utf-8");
     const data = JSON.parse(fileContent);
-
-    // If we used the shipped file as fallback, try to copy it to backupPath (e.g., in /tmp) so future writes have it as base
-    if (activePath === shippedPath && backupPath !== shippedPath) {
-      const dir = path.dirname(backupPath);
-      try {
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-        fs.writeFileSync(backupPath, fileContent, "utf-8");
-        console.log("[Local DB] Successfully cached shipped DB file into:", backupPath);
-      } catch (writeErr) {
-        console.warn("[Local DB] Failed to cache shipped DB file into writeable path:", writeErr);
-      }
-    }
 
     return {
       settings: { ...DEFAULT_SETTINGS, ...(data.settings || {}) },
@@ -867,6 +857,7 @@ export async function seedDatabaseIfEmpty() {
 
     // Load from backup JSON if exists in the bundle
     const backupPath = getBackupPath();
+    let backupLoaded = false;
     if (fs.existsSync(backupPath)) {
       try {
         console.log("[Firebase Seeder] Reading backup from:", backupPath);
@@ -880,12 +871,25 @@ export async function seedDatabaseIfEmpty() {
         if (backupContent.products && backupContent.products.length > 0) {
           products = backupContent.products;
         }
+        backupLoaded = true;
         console.log(`[Firebase Seeder] Successfully parsed backup file: ${categories.length} categories, ${products.length} products loaded.`);
       } catch (err) {
         console.error("[Firebase Seeder] Failed to parse backup file, using defaults:", err);
       }
-    } else {
-      console.log("[Firebase Seeder] Backup file not found at " + backupPath + ". Using default fallbacks.");
+    }
+    
+    if (!backupLoaded && shippedLocalDb) {
+      console.log("[Firebase Seeder] Reading backup from statically imported local_db_backup.json...");
+      if (shippedLocalDb.settings && Object.keys(shippedLocalDb.settings).length > 0) {
+        settings = shippedLocalDb.settings;
+      }
+      if (shippedLocalDb.categories && shippedLocalDb.categories.length > 0) {
+        categories = shippedLocalDb.categories as any[];
+      }
+      if (shippedLocalDb.products && shippedLocalDb.products.length > 0) {
+        products = shippedLocalDb.products as any[];
+      }
+      backupLoaded = true;
     }
 
     // Seed Settings if empty

@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { db, getSettings, getProducts, getCategories, getMessages, DEFAULT_CATEGORIES, DEFAULT_PRODUCTS } from "./firebase-server";
 import { doc, setDoc, writeBatch } from "firebase/firestore";
+import shippedLocalDb from "../data/local_db_backup.json";
 
 const isVercel = !!process.env.VERCEL;
 const BACKUP_DIR = isVercel 
@@ -35,25 +36,29 @@ export interface BackupData {
 // Read current local backup DB
 export function getBackupDB(): BackupData {
   ensureDirs();
-  const shippedPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
-  const targetPath = fs.existsSync(LOCAL_DB_PATH) 
-    ? LOCAL_DB_PATH 
-    : (fs.existsSync(shippedPath) ? shippedPath : LOCAL_DB_PATH);
 
-  if (fs.existsSync(targetPath)) {
-    try {
-      const fileContent = fs.readFileSync(targetPath, "utf-8");
-      const data = JSON.parse(fileContent);
-
-      // If we used the shipped file as fallback, try to copy it to LOCAL_DB_PATH (e.g. in /tmp) so future writes have it as base
-      if (targetPath === shippedPath && LOCAL_DB_PATH !== shippedPath) {
-        try {
-          fs.writeFileSync(LOCAL_DB_PATH, fileContent, "utf-8");
-          console.log("[Backup System] Successfully cached shipped DB file into:", LOCAL_DB_PATH);
-        } catch (writeErr) {
-          console.warn("[Backup System] Failed to cache shipped DB file into writeable path:", writeErr);
-        }
+  if (!fs.existsSync(LOCAL_DB_PATH)) {
+    if (shippedLocalDb) {
+      try {
+        fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(shippedLocalDb, null, 2), "utf-8");
+        console.log("[Backup System] Successfully cached shipped DB file into:", LOCAL_DB_PATH);
+      } catch (writeErr) {
+        console.warn("[Backup System] Failed to cache shipped DB file into writeable path:", writeErr);
       }
+      return {
+        settings: shippedLocalDb.settings || {},
+        products: shippedLocalDb.products || [],
+        categories: shippedLocalDb.categories || [],
+        messages: shippedLocalDb.messages || [],
+        lastUpdated: (shippedLocalDb as any).lastUpdated || new Date().toISOString()
+      };
+    }
+  }
+
+  if (fs.existsSync(LOCAL_DB_PATH)) {
+    try {
+      const fileContent = fs.readFileSync(LOCAL_DB_PATH, "utf-8");
+      const data = JSON.parse(fileContent);
 
       return {
         settings: data.settings || {},
