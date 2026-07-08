@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { 
   initializeFirestore, 
+  getFirestore,
   collection, 
   getDocs, 
   doc, 
@@ -30,11 +31,25 @@ if (!config) {
 }
 
 export const app = config ? (getApps().length === 0 ? initializeApp(config) : getApp()) : null;
-export const db = app 
-  ? (config.firestoreDatabaseId 
-      ? initializeFirestore(app, { experimentalForceLongPolling: true }, config.firestoreDatabaseId)
-      : initializeFirestore(app, { experimentalForceLongPolling: true }))
-  : null;
+
+// Safe Firestore database reference getter to prevent "Firestore already initialized" crashes
+const getSafeFirestore = () => {
+  if (!app) return null;
+  const dbId = config.firestoreDatabaseId || "(default)";
+  try {
+    // Try retrieving existing instance for the specific database ID
+    return getFirestore(app, dbId);
+  } catch (err) {
+    try {
+      return initializeFirestore(app, { experimentalForceLongPolling: true }, dbId);
+    } catch (initErr) {
+      console.error("Critical: Failed to initialize Firestore:", initErr);
+      return null;
+    }
+  }
+};
+
+export const db = getSafeFirestore();
 
 // Category Interface
 export interface Category {
@@ -472,7 +487,6 @@ export async function deleteProduct(id: number): Promise<void> {
     return;
   }
   try {
-    const { deleteDoc } = await import("firebase/firestore");
     const docRef = doc(db, "products", String(id));
     await deleteDoc(docRef);
   } catch (e: any) {
@@ -680,7 +694,6 @@ export async function deleteMessage(id: string): Promise<void> {
     return;
   }
   try {
-    const { deleteDoc } = await import("firebase/firestore");
     const docRef = doc(db, "messages", id);
     await deleteDoc(docRef);
   } catch (e: any) {

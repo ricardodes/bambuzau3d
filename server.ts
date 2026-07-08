@@ -14,6 +14,7 @@ import {
   addMessage,
   deleteMessage,
   updateMessageStatus,
+  forceRecreateDatabase,
   DEFAULT_CATEGORIES,
   DEFAULT_PRODUCTS
 } from './src/lib/firebase-server';
@@ -525,7 +526,6 @@ function startServer() {
   // Recreate the database from pristine templates
   app.post('/api/backup/recreate-db', adminAuthMiddleware, async (_req, res) => {
     try {
-      const { forceRecreateDatabase } = await import('./src/lib/firebase-server');
       const result = await forceRecreateDatabase();
       res.json(result);
     } catch (err: any) {
