@@ -120,13 +120,14 @@ async function isAdmin(req: VercelRequest): Promise<boolean> {
   return provided === (settings.adminPassword || 'admin123');
 }
 
-// ─── Rate limiter simples ─────────────────────────────────────────────────────
+// ─── Rate limiter simples (chave = ip + propósito, para não misturar limites diferentes) ──
 const rl: Record<string, { n: number; t: number }> = {};
-function rateLimit(ip: string, max: number, windowMs: number): boolean {
+function rateLimit(ip: string, max: number, windowMs: number, purpose = 'general'): boolean {
+  const key = `${ip}:${purpose}`;
   const now = Date.now();
-  if (!rl[ip] || now > rl[ip].t) { rl[ip] = { n: 1, t: now + windowMs }; return true; }
-  rl[ip].n++;
-  return rl[ip].n <= max;
+  if (!rl[key] || now > rl[key].t) { rl[key] = { n: 1, t: now + windowMs }; return true; }
+  rl[key].n++;
+  return rl[key].n <= max;
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
@@ -136,9 +137,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const ip = ((req.headers['x-forwarded-for'] as string) || '').split(',')[0].trim() || 'unknown';
   const { method } = req;
-  // Extrai o path do URL real ignorando query strings
-  const rawUrl = req.url || '/';
-  const route = rawUrl.split('?')[0].replace(/\/$/, '') || '/';
+  // Normaliza o path — com [...path].ts o req.url chega sem o prefixo /api/
+  // Ex: req.url = '/backup/download' → route = '/api/backup/download'
+  const rawPath = (req.url || '/').split('?')[0].replace(/\/$/, '');
+  const route = rawPath.startsWith('/api') ? rawPath : `/api${rawPath}`;
   console.log(`[API] ${method} ${route}`);
 
   // Rate limit geral
@@ -182,7 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ── POST /api/verify-password
     if (route === '/api/verify-password' && method === 'POST') {
-      if (!rateLimit(ip, 20, 600000)) {
+      if (!rateLimit(ip, 20, 600000, 'verify-password')) {
         return res.status(429).json({ success: false, error: 'Muitas tentativas. Tente em 10 minutos.' });
       }
       const { password } = req.body;
@@ -246,7 +248,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ── POST /api/messages  (público)
     if (route === '/api/messages' && method === 'POST') {
-      if (!rateLimit(ip, 5, 300000)) {
+      if (!rateLimit(ip, 5, 300000, 'contact-message')) {
         return res.status(429).json({ success: false, error: 'Aguarde 5 minutos antes de enviar outra mensagem.' });
       }
       const { name, email, phone, messageText } = req.body;
@@ -286,14 +288,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ── GET /api/backup/download  (admin)
     if (route === '/api/backup/download' && method === 'GET') {
+      if (!(await isAdmin(req))) {
+        return res.status(403).json({ success: false, error: 'Não autorizado. Faça login novamente no painel admin.' });
+      }
+      try {
+        const results = await Promise.allSettled([
+          getSettings(), fsGet('categories'), fsGet('products'), fsGet('messages'),
+        ]);
+        const [settingsR, categoriesR, productsR, messagesR] = results;
+        const warnings: string[] = [];
+
+        const settings = settingsR.status === 'fulfilled' ? settingsR.value : (() => { warnings.push(`settings: ${settingsR.reason?.message || settingsR.reason}`); return DEFAULT_SETTINGS; })();
+        const categories = categoriesR.status === 'fulfilled' ? categoriesR.value : (() => { warnings.push(`categories: ${categoriesR.reason?.message || categoriesR.reason}`); return []; })();
+        const products = productsR.status === 'fulfilled' ? productsR.value : (() => { warnings.push(`products: ${productsR.reason?.message || productsR.reason}`); return []; })();
+        const messages = messagesR.status === 'fulfilled' ? messagesR.value : (() => { warnings.push(`messages: ${messagesR.reason?.message || messagesR.reason}`); return []; })();
+
+        if (warnings.length) console.error('[backup/download] partial failure:', warnings.join(' | '));
+
+        const snapshot = { settings, categories, products, messages, lastUpdated: new Date().toISOString(), ...(warnings.length ? { _warnings: warnings } : {}) };
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename=bambuzau-backup-${new Date().toISOString().split('T')[0]}.json`);
+        return res.send(JSON.stringify(snapshot, null, 2));
+      } catch (err: any) {
+        console.error('[backup/download] fatal error:', err?.stack || err?.message || err);
+        return res.status(500).json({ success: false, error: `Erro ao gerar backup: ${err?.message || 'erro desconhecido'}` });
+      }
+    }
+
+    // ── GET /api/backup/list  (admin) — no Vercel não há backups diários locais
+    if (route === '/api/backup/list' && method === 'GET') {
       if (!(await isAdmin(req))) return res.status(403).json({ success: false, error: 'Não autorizado.' });
-      const [settings, categories, products, messages] = await Promise.all([
-        getSettings(), fsGet('categories'), fsGet('products'), fsGet('messages')
-      ]);
-      const snapshot = { settings, categories, products, messages, lastUpdated: new Date().toISOString() };
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename=bambuzau-backup-${new Date().toISOString().split('T')[0]}.json`);
-      return res.send(JSON.stringify(snapshot, null, 2));
+      return res.json({ success: true, backups: [] });
+    }
+
+    // ── POST /api/backup/restore  (admin) — restaura dados do JSON enviado para o Firestore
+    if (route === '/api/backup/restore' && method === 'POST') {
+      if (!(await isAdmin(req))) return res.status(403).json({ success: false, error: 'Não autorizado.' });
+      try {
+        const data = req.body?.backupData || req.body;
+        if (!data) return res.status(400).json({ success: false, error: 'Dados de backup não fornecidos.' });
+        const promises: Promise<void>[] = [];
+        if (data.settings) promises.push(fsSet('settings', 'main', data.settings));
+        if (Array.isArray(data.products)) {
+          data.products.forEach((p: any) => { if (p.id) promises.push(fsSet('products', String(p.id), p)); });
+        }
+        if (Array.isArray(data.categories)) {
+          data.categories.forEach((c: any) => { if (c.id) promises.push(fsSet('categories', String(c.id), c)); });
+        }
+        if (Array.isArray(data.messages)) {
+          data.messages.forEach((m: any) => { if (m.id) promises.push(fsSet('messages', String(m.id), m)); });
+        }
+        await Promise.all(promises);
+        return res.json({ success: true, message: 'Backup restaurado com sucesso!' });
+      } catch (err: any) {
+        return res.status(500).json({ success: false, error: `Falha ao restaurar: ${err.message}` });
+      }
+    }
+
+    // ── POST /api/backup/recreate-db  (admin) — limpa e recria com defaults
+    if (route === '/api/backup/recreate-db' && method === 'POST') {
+      if (!(await isAdmin(req))) return res.status(403).json({ success: false, error: 'Não autorizado.' });
+      try {
+        await fsSet('settings', 'main', DEFAULT_SETTINGS);
+        return res.json({ success: true, message: 'Banco de dados recriado com configurações padrão.' });
+      } catch (err: any) {
+        return res.status(500).json({ success: false, error: `Falha ao recriar DB: ${err.message}` });
+      }
     }
 
     // Rota não encontrada
