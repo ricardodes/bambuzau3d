@@ -11,18 +11,40 @@ import {
 } from "firebase/firestore";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-// Find and load firebase-applet-config.json
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Find and load firebase-applet-config.json with robust fallback paths
 const loadConfig = () => {
-  const p = path.join(process.cwd(), "firebase-applet-config.json");
-  if (fs.existsSync(p)) {
-    try {
-      return JSON.parse(fs.readFileSync(p, "utf-8"));
-    } catch (e) {
-      console.error("Error parsing Firebase config:", e);
+  const searchPaths = [
+    path.join(process.cwd(), "firebase-applet-config.json"),
+    path.join(__dirname, "firebase-applet-config.json"),
+    path.join(__dirname, "..", "firebase-applet-config.json"),
+    path.join(__dirname, "../..", "firebase-applet-config.json")
+  ];
+
+  for (const p of searchPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        console.log("[Firebase Config] Config found at path:", p);
+        return JSON.parse(fs.readFileSync(p, "utf-8"));
+      } catch (e) {
+        console.error(`[Firebase Config] Error parsing config at ${p}:`, e);
+      }
     }
   }
   return null;
+};
+
+// Helper to resolve the correct backup JSON path (resilient in serverless)
+const getBackupPath = () => {
+  const isVercelEnv = !!process.env.VERCEL;
+  const backupDir = isVercelEnv 
+    ? path.join("/tmp", "data")
+    : path.join(process.cwd(), "src", "data");
+  return path.join(backupDir, "local_db_backup.json");
 };
 
 const config = loadConfig();
@@ -544,7 +566,7 @@ export function isLocalDatabaseOnly(): boolean {
   if (process.env.USE_LOCAL_DB === "true") {
     return true;
   }
-  const backupPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
+  const backupPath = getBackupPath();
   if (fs.existsSync(backupPath)) {
     try {
       const data = JSON.parse(fs.readFileSync(backupPath, "utf-8"));
@@ -565,7 +587,7 @@ export function readLocalDatabase(): {
   products: Product[];
   messages: any[];
 } {
-  const backupPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
+  const backupPath = getBackupPath();
   const defaultData = {
     settings: DEFAULT_SETTINGS,
     categories: DEFAULT_CATEGORIES,
@@ -575,10 +597,14 @@ export function readLocalDatabase(): {
 
   if (!fs.existsSync(backupPath)) {
     const dir = path.dirname(backupPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(backupPath, JSON.stringify(defaultData, null, 2), "utf-8");
+    } catch (writeErr) {
+      console.warn("[Local DB] Failed to write default database JSON (read-only filesystem?):", writeErr);
     }
-    fs.writeFileSync(backupPath, JSON.stringify(defaultData, null, 2), "utf-8");
     return defaultData;
   }
 
@@ -603,7 +629,7 @@ export function writeLocalDatabase(data: {
   products?: Product[];
   messages?: any[];
 }) {
-  const backupPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
+  const backupPath = getBackupPath();
   const current = readLocalDatabase();
   
   const merged = {
@@ -818,7 +844,7 @@ export async function seedDatabaseIfEmpty() {
     let products = DEFAULT_PRODUCTS;
 
     // Load from backup JSON if exists in the bundle
-    const backupPath = path.join(process.cwd(), "src", "data", "local_db_backup.json");
+    const backupPath = getBackupPath();
     if (fs.existsSync(backupPath)) {
       try {
         console.log("[Firebase Seeder] Reading backup from:", backupPath);
